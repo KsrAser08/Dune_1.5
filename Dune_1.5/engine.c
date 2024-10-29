@@ -32,7 +32,7 @@ OBJECT_SAMPLE obj = {
 	.pos = {1, 1},
 	.dest = {MAP_HEIGHT - 2, MAP_WIDTH - 2},
 	.repr = 'o',
-	.speed = 300,
+	.move_period = 300,
 	.next_move_time = 300
 };
 
@@ -179,5 +179,5 @@ void sample_obj_move(void) {
 	obj.pos = sample_obj_next_position();
 	map[1][obj.pos.row][obj.pos.column] = obj.repr;
 
-	obj.next_move_time = sys_clock + obj.speed;
+	obj.next_move_time = sys_clock + obj.move_period;
 }
