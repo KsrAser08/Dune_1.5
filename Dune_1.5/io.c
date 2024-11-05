@@ -40,3 +40,10 @@ KEY get_key(void) {
 	default: return k_undef;
 	}
 }
+
+/*enum COLORTYPE {
+	BLACK,
+	DARKBLUE,
+	DARKGREEN,
+	DARKSKYBLUE
+} COLOR; */

@@ -21,16 +21,15 @@ void display_resource(RESOURCE resource);
 void display_map(char map[N_LAYER][MAP_HEIGHT][MAP_WIDTH]);
 void display_cursor(CURSOR cursor);
 
-
 void display(
 	RESOURCE resource,
-	char map[N_LAYER][MAP_HEIGHT][MAP_WIDTH], 
+	char map[N_LAYER][MAP_HEIGHT][MAP_WIDTH],
 	CURSOR cursor)
 {
 	display_resource(resource);
 	display_map(map);
 	display_cursor(cursor);
-	// display_system_message()
+	//display_system_message();
 	// display_object_info()
 	// display_commands()
 	// ...
@@ -64,8 +63,48 @@ void display_map(char map[N_LAYER][MAP_HEIGHT][MAP_WIDTH]) {
 	for (int i = 0; i < MAP_HEIGHT; i++) {
 		for (int j = 0; j < MAP_WIDTH; j++) {
 			if (frontbuf[i][j] != backbuf[i][j]) {
-				POSITION pos = {i, j };
+				POSITION pos = {i, j};
 				printc(padd(map_pos, pos), backbuf[i][j], COLOR_DEFAULT);
+			}
+			//아군 베이스 색
+			else if (backbuf[i][j] == 'B' && i > MAP_HEIGHT - (MAP_HEIGHT / 2)) {
+				POSITION pos = {i, j};
+				printc(padd(map_pos, pos), backbuf[i][j], COLOR_DEFAULT + 15);
+			}
+			//적군 베이스 색
+			else if (backbuf[i][j] == 'B' && i < MAP_HEIGHT - (MAP_HEIGHT / 2)) {
+				POSITION pos = { i, j };
+				printc(padd(map_pos, pos), backbuf[i][j], COLOR_DEFAULT + 64);
+			}
+			//아군 하베스터 색(수정 필요)
+			else if (backbuf[i][j] == 'H' && i > MAP_HEIGHT - (MAP_HEIGHT / 2)) {
+				POSITION pos = { i, j };
+				printc(padd(map_pos, pos), backbuf[i][j], COLOR_DEFAULT + 15);
+			}
+			//적군 하베스터 색(수정 필요)
+			else if (backbuf[i][j] == 'H' && i < MAP_HEIGHT - (MAP_HEIGHT / 2)) {
+				POSITION pos = { i, j };
+				printc(padd(map_pos, pos), backbuf[i][j], COLOR_DEFAULT + 64);
+			}
+			//중립 장판 색
+			else if (backbuf[i][j] == 'P') {
+				POSITION pos = { i, j };
+				printc(padd(map_pos, pos), backbuf[i][j], COLOR_DEFAULT);
+			}
+			//중립 바위 색
+			else if (backbuf[i][j] == 'R') {
+				POSITION pos = { i, j };
+				printc(padd(map_pos, pos), backbuf[i][j], COLOR_DEFAULT + 128);
+			}
+			//자원 스파이스 색
+			else if (backbuf[i][j] == '5' || backbuf[i][j] == '3') {
+				POSITION pos = { i, j };
+				printc(padd(map_pos, pos), backbuf[i][j], COLOR_DEFAULT + 48);
+			}
+			//중립 샌드웜 색
+			else if (backbuf[i][j] == 'W') {
+				POSITION pos = { i, j };
+				printc(padd(map_pos, pos), backbuf[i][j], COLOR_DEFAULT + 96);
 			}
 			frontbuf[i][j] = backbuf[i][j];
 		}

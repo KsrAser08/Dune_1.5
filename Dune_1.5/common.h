@@ -11,9 +11,11 @@
 #define TICK 10		// time unit(ms)
 
 #define N_LAYER 2
-#define MAP_WIDTH	60
+#define MAP_WIDTH	60	//맵의 크기
 #define MAP_HEIGHT	18
 
+#define SYSTEM_MES_WIDTH	60	//시스템 메세지의 크기
+#define SYSTEM_MES_HEIGHT	8
 
 /* ================= 위치와 방향 =================== */
 // 맵에서 위치를 나타내는 구조체
@@ -90,5 +92,11 @@ typedef struct {
 	int move_period;	// '몇 ms마다 한 칸 움직이는지'를 뜻함
 	int next_move_time;	// 다음에 움직일 시간
 } OBJECT_SAMPLE;
+
+typedef struct {
+	POSITION A,B,C,D; //건물 칸수 2 X 2
+	char repr; //화면에 표시할 문자 - 건물 이름S
+	int layer; //어느 레이어인지 표시
+}OBJECT_BUILDING;
 
 #endif

@@ -6,6 +6,8 @@
 #include "display.h"
 
 void init(void);
+void system_msg(void);
+void game_map(void);
 void intro(void);
 void outro(void);
 void cursor_move(DIRECTION dir);
@@ -15,7 +17,7 @@ POSITION sample_obj_next_position(void);
 
 /* ================= control =================== */
 int sys_clock = 0;		// system-wide clock(ms)
-CURSOR cursor = { { 1, 1 }, {1, 1} };
+CURSOR cursor = { {1, 1}, {1, 1} };
 
 
 /* ================= game data =================== */
@@ -36,11 +38,98 @@ OBJECT_SAMPLE obj = {
 	.next_move_time = 300
 };
 
+//아군 베이스 설정 'B'
+OBJECT_BUILDING obj_ally_build = {
+	.repr = 'B',
+	.layer = 0,
+	.A = {MAP_HEIGHT - 3, MAP_WIDTH - (MAP_WIDTH - 1)},
+	.B = {MAP_HEIGHT - 2, MAP_WIDTH - (MAP_WIDTH - 1)},
+	.C = {MAP_HEIGHT - 3, MAP_WIDTH - (MAP_WIDTH - 2)},
+	.D = {MAP_HEIGHT - 2, MAP_WIDTH - (MAP_WIDTH - 2)}
+};
+//적군 베이스 설정 'B'
+OBJECT_BUILDING obj_enemy_build = {
+	.repr = 'B',
+	.layer = 0,
+	.A = {MAP_HEIGHT - (MAP_HEIGHT - 2), MAP_WIDTH - (MAP_WIDTH + 3)},
+	.B = {MAP_HEIGHT - (MAP_HEIGHT - 3), MAP_WIDTH - (MAP_WIDTH + 3)},
+	.C = {MAP_HEIGHT - (MAP_HEIGHT - 2), MAP_WIDTH - (MAP_WIDTH + 2)},
+	.D = {MAP_HEIGHT - (MAP_HEIGHT - 3), MAP_WIDTH - (MAP_WIDTH + 2)}
+};
+//아군, 적군 하베스터 추가 'H'
+OBJECT_BUILDING obj_Harvester = {
+	.repr = 'H',
+	.layer = 1,
+	.A = {MAP_HEIGHT - 4, MAP_WIDTH - (MAP_WIDTH - 1)}, //아군 하베스터
+	.B = {MAP_HEIGHT - (MAP_HEIGHT - 4), MAP_WIDTH - (MAP_WIDTH + 2)} //적군 하베스터
+};
+//아군, 적군 스파이스 추가 'H'
+OBJECT_BUILDING obj_spice = {
+	.repr = '5',
+	.layer = 0,
+	.A = {MAP_HEIGHT - 8, MAP_WIDTH - (MAP_WIDTH - 1)}, //아군 스파이스
+	.B = {MAP_HEIGHT - (MAP_HEIGHT - 8), MAP_WIDTH - (MAP_WIDTH + 2)} //적군 스파이스
+
+};
+//아군쪽 장판 추가 'P'
+OBJECT_BUILDING obj_ally_plate = {
+	.repr = 'P',
+	.layer = 0,
+	.A = {MAP_HEIGHT - 3, MAP_WIDTH - (MAP_WIDTH - 3)},
+	.B = {MAP_HEIGHT - 2, MAP_WIDTH - (MAP_WIDTH - 3)},
+	.C = {MAP_HEIGHT - 3, MAP_WIDTH - (MAP_WIDTH - 4)},
+	.D = {MAP_HEIGHT - 2, MAP_WIDTH - (MAP_WIDTH - 4)}
+};
+//적군쪽 장판 추가 'P'
+OBJECT_BUILDING obj_enemy_plate = {
+	.repr = 'P',
+	.layer = 0,
+	.A = {MAP_HEIGHT - (MAP_HEIGHT - 2), MAP_WIDTH - (MAP_WIDTH + 5)},
+	.B = {MAP_HEIGHT - (MAP_HEIGHT - 3), MAP_WIDTH - (MAP_WIDTH + 5)},
+	.C = {MAP_HEIGHT - (MAP_HEIGHT - 2), MAP_WIDTH - (MAP_WIDTH + 4)},
+	.D = {MAP_HEIGHT - (MAP_HEIGHT - 3), MAP_WIDTH - (MAP_WIDTH + 4)}
+};
+//좌측 상단 중립 돌 추가 'R'
+OBJECT_BUILDING obj_stone1 = {
+	.repr = 'R',
+	.layer = 0,
+	.A = {MAP_HEIGHT - (MAP_HEIGHT - 5), MAP_WIDTH - (MAP_WIDTH - 18)},
+	.B = {MAP_HEIGHT - (MAP_HEIGHT - 6), MAP_WIDTH - (MAP_WIDTH - 18)},
+	.C = {MAP_HEIGHT - (MAP_HEIGHT - 5), MAP_WIDTH - (MAP_WIDTH - 19)},
+	.D = {MAP_HEIGHT - (MAP_HEIGHT - 6), MAP_WIDTH - (MAP_WIDTH - 19)},
+	
+};
+//우측 하단 중립 돌 추가 'R'
+OBJECT_BUILDING obj_stone2 = {
+	.repr = 'R',
+	.layer = 0,
+	.A = {MAP_HEIGHT - 5, MAP_WIDTH - 11},
+	.B = {MAP_HEIGHT - 6, MAP_WIDTH - 11},
+	.C = {MAP_HEIGHT - 5, MAP_WIDTH - 12},
+	.D = {MAP_HEIGHT - 6, MAP_WIDTH - 12}
+};
+//맵 이곳저곳 작은 돌 추가 'R'
+OBJECT_BUILDING obj_small_stone = {
+	.repr = 'R',
+	.layer = 0,
+	.A = {MAP_HEIGHT - 7, MAP_WIDTH + 12},
+	.B = {MAP_HEIGHT - 12, MAP_WIDTH - 20}
+};
+//샌드웜 두마리 추가 'W'
+OBJECT_BUILDING obj_sandworm = {
+	.repr = 'W',
+	.layer = 1,
+	.A = {MAP_HEIGHT - (MAP_HEIGHT - 3), MAP_WIDTH - (MAP_WIDTH - 10)},
+	.B = {MAP_HEIGHT - 6, MAP_WIDTH - (MAP_WIDTH + 24)}
+};
+
 /* ================= main() =================== */
 int main(void) {
 	srand((unsigned int)time(NULL));
 
 	init();
+	//system_msg();
+	game_map();
 	intro();
 	display(resource, map, cursor);
 
@@ -74,7 +163,7 @@ int main(void) {
 
 /* ================= subfunctions =================== */
 void intro(void) {
-	printf("DUNE 1.5\n");		
+	printf("Dune 1.5");
 	Sleep(2000);
 	system("cls");
 }
@@ -86,15 +175,15 @@ void outro(void) {
 
 void init(void) {
 	// layer 0(map[0])에 지형 생성
+	// 게임 화면
 	for (int j = 0; j < MAP_WIDTH; j++) {
 		map[0][0][j] = '#';
 		map[0][MAP_HEIGHT - 1][j] = '#';
 	}
-
 	for (int i = 1; i < MAP_HEIGHT - 1; i++) {
 		map[0][i][0] = '#';
 		map[0][i][MAP_WIDTH - 1] = '#';
-		for (int j = 1; j < MAP_WIDTH-1; j++) {
+		for (int j = 1; j < MAP_WIDTH - 1; j++) {
 			map[0][i][j] = ' ';
 		}
 	}
@@ -105,9 +194,72 @@ void init(void) {
 			map[1][i][j] = -1;
 		}
 	}
-
+	
 	// object sample
 	map[1][obj.pos.row][obj.pos.column] = 'o';
+}
+
+//시스템 메세지(수정 필요)
+/*void system_mes(void) {
+	for (int i = 0; i < SYSTEM_MES_HEIGHT - 1; i++) {
+		for (int j = 0; j < SYSTEM_MES_WIDTH; j++) {
+			for (int k = 0; k < SYSTEM_MES_WIDTH - 1; k++) {
+				map[0][0][j] = '#';
+				map[0][MAP_HEIGHT - 1][j] = '#';
+				map[0][i][0] = '#';
+				map[0][i][MAP_WIDTH - 1] = '#';
+				map[0][i][j] = ' ';
+			}
+		}
+	}
+}*/
+
+
+
+// 건물,지형 / 유닛 맵 안에 배치
+void game_map(void) {
+	// 아군 베이스 추가 B
+	map[obj_ally_build.layer][obj_ally_build.A.row][obj_ally_build.A.column] = obj_ally_build.repr;
+	map[obj_ally_build.layer][obj_ally_build.B.row][obj_ally_build.B.column] = obj_ally_build.repr;
+	map[obj_ally_build.layer][obj_ally_build.C.row][obj_ally_build.C.column] = obj_ally_build.repr;
+	map[obj_ally_build.layer][obj_ally_build.D.row][obj_ally_build.D.column] = obj_ally_build.repr;
+	// 적군 베이스 추가 B
+	map[obj_enemy_build.layer][obj_enemy_build.A.row][obj_enemy_build.A.column] = obj_enemy_build.repr;
+	map[obj_enemy_build.layer][obj_enemy_build.B.row][obj_enemy_build.B.column] = obj_enemy_build.repr;
+	map[obj_enemy_build.layer][obj_enemy_build.C.row][obj_enemy_build.C.column] = obj_enemy_build.repr;
+	map[obj_enemy_build.layer][obj_enemy_build.D.row][obj_enemy_build.D.column] = obj_enemy_build.repr;
+	//아군, 적군 하베스터 추가 H
+	map[obj_Harvester.layer][obj_Harvester.A.row][obj_Harvester.A.column] = obj_Harvester.repr;
+	map[obj_Harvester.layer][obj_Harvester.B.row][obj_Harvester.B.column] = obj_Harvester.repr;
+	//아군, 적군 스파이스 추가 H
+	map[obj_spice.layer][obj_spice.A.row][obj_spice.A.column] = obj_spice.repr;
+	map[obj_spice.layer][obj_spice.B.row][obj_spice.B.column] = obj_spice.repr;
+	//아군쪽 장판 추가 P
+	map[obj_ally_plate.layer][obj_ally_plate.A.row][obj_ally_plate.A.column] = obj_ally_plate.repr;
+	map[obj_ally_plate.layer][obj_ally_plate.B.row][obj_ally_plate.B.column] = obj_ally_plate.repr;
+	map[obj_ally_plate.layer][obj_ally_plate.C.row][obj_ally_plate.C.column] = obj_ally_plate.repr;
+	map[obj_ally_plate.layer][obj_ally_plate.D.row][obj_ally_plate.D.column] = obj_ally_plate.repr;
+	//적군쪽 장판 추가 P
+	map[obj_enemy_plate.layer][obj_enemy_plate.A.row][obj_enemy_plate.A.column] = obj_enemy_plate.repr;
+	map[obj_enemy_plate.layer][obj_enemy_plate.B.row][obj_enemy_plate.B.column] = obj_enemy_plate.repr;
+	map[obj_enemy_plate.layer][obj_enemy_plate.C.row][obj_enemy_plate.C.column] = obj_enemy_plate.repr;
+	map[obj_enemy_plate.layer][obj_enemy_plate.D.row][obj_enemy_plate.D.column] = obj_enemy_plate.repr;
+	//좌측 상단 중립 돌 추가 R
+	map[obj_stone1.layer][obj_stone1.A.row][obj_stone1.A.column] = obj_stone1.repr;
+	map[obj_stone1.layer][obj_stone1.B.row][obj_stone1.B.column] = obj_stone1.repr;
+	map[obj_stone1.layer][obj_stone1.C.row][obj_stone1.C.column] = obj_stone1.repr;
+	map[obj_stone1.layer][obj_stone1.D.row][obj_stone1.D.column] = obj_stone1.repr;
+	//우측 하단 중립 돌 추가 R
+	map[obj_stone2.layer][obj_stone2.A.row][obj_stone2.A.column] = obj_stone2.repr;
+	map[obj_stone2.layer][obj_stone2.B.row][obj_stone2.B.column] = obj_stone2.repr;
+	map[obj_stone2.layer][obj_stone2.C.row][obj_stone2.C.column] = obj_stone2.repr;
+	map[obj_stone2.layer][obj_stone2.D.row][obj_stone2.D.column] = obj_stone2.repr;
+	//맵 이곳저곳에 작은 돌 추가 R
+	map[obj_small_stone.layer][obj_small_stone.A.row][obj_small_stone.A.column] = obj_small_stone.repr;
+	map[obj_small_stone.layer][obj_small_stone.B.row][obj_small_stone.B.column] = obj_small_stone.repr;
+	//샌드웜 두마리 추가 W
+	map[obj_sandworm.layer][obj_sandworm.A.row][obj_sandworm.A.column] = obj_sandworm.repr;
+	map[obj_sandworm.layer][obj_sandworm.B.row][obj_sandworm.B.column] = obj_sandworm.repr;
 }
 
 // (가능하다면) 지정한 방향으로 커서 이동
