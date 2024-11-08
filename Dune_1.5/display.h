@@ -12,7 +12,7 @@
 
 // 표시할 색상 정의. 대충 맞춰 뒀는데, 취향껏 추가하거나 변경하기
 #define COLOR_DEFAULT	15
-#define COLOR_CURSOR	112
+#define COLOR_CURSOR	15   //원래는 112
 #define COLOR_RESOURCE  112
 
 // 지금은 자원, 맵, 커서만 표시
@@ -20,8 +20,10 @@
 void display(
 	RESOURCE resource,
 	char map[N_LAYER][MAP_HEIGHT][MAP_WIDTH],
+	char system_map[SYSTEM_MES_HEIGHT][SYSTEM_MES_WIDTH],
+	char status_map[STATUS_HEIGHT][STATUS_WIDTH],
+	char consol_map[CONSOL_HEIGHT][CONSOL_WIDTH],
 	CURSOR cursor
-	/*SYSTEM system_mes*/
 );
 
 #endif

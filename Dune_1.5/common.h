@@ -17,6 +17,12 @@
 #define SYSTEM_MES_WIDTH	60	//시스템 메세지의 크기
 #define SYSTEM_MES_HEIGHT	8
 
+#define STATUS_WIDTH	50 //상태창의 크기
+#define STATUS_HEIGHT	18
+
+#define CONSOL_WIDTH	50 //명령창의 크기
+#define CONSOL_HEIGHT	8
+
 /* ================= 위치와 방향 =================== */
 // 맵에서 위치를 나타내는 구조체
 typedef struct {
@@ -95,7 +101,7 @@ typedef struct {
 
 typedef struct {
 	POSITION A,B,C,D; //건물 칸수 2 X 2
-	char repr; //화면에 표시할 문자 - 건물 이름S
+	char repr; //화면에 표시할 문자 - 건물 이름
 	int layer; //어느 레이어인지 표시
 }OBJECT_BUILDING;
 
