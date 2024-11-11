@@ -74,6 +74,8 @@ inline POSITION psub(POSITION p1, POSITION p2) {
 
 // 방향키인지 확인하는 함수
 #define is_arrow_key(k)		(k_up <= (k) && (k) <= k_down)
+// 더블클릭을 확인하기 위한 함수
+#define is_arrow_key2(n)		(k_up <= (n) && (n) <= k_down)
 
 // 화살표 '키'(KEY)를 '방향'(DIRECTION)으로 변환. 정수 값은 똑같으니 타입만 바꿔주면 됨
 #define ktod(k)		(DIRECTION)(k)

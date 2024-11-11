@@ -25,8 +25,13 @@ void plate_info(void); // 장판 현재 정보
 void spice_info(void); // 스파이스 현재 정보
 void desert_info(void); // 사막 정보 표시
 
+void command_ally_base(void);
+void command_ally_harvester(void);
+
 /* ================= control =================== */
 int sys_clock = 0;		// system-wide clock(ms)
+int cursor_clock = 0;
+
 CURSOR cursor = { {1, 1}, {1, 1} };
 /* ================= game data =================== */
 char map[N_LAYER][MAP_HEIGHT][MAP_WIDTH] = { 0 };
@@ -137,11 +142,15 @@ OBJECT_BUILDING obj_sandworm = {
 
 /* ================= main() =================== */
 int main(void) {
+	int prevkey = 0;
+	clock_t lasttime = 0;
+
 	srand((unsigned int)time(NULL));
 	init();
 	game_map();
 	intro();
 	display(resource, map, system_map,status_map, consol_map, cursor);
+
 
 	while (1) {
 		// loop 돌 때마다(즉, TICK==10ms마다) 키 입력 확인
@@ -149,7 +158,19 @@ int main(void) {
 
 		// 키 입력이 있으면 처리
 		if (is_arrow_key(key)) {
-			cursor_move(ktod(key));
+			//140ms안에 클릭이 한번 더 있을때
+			if (prevkey == key && (clock() - lasttime) <= 140) {
+				for (int i = 0; i < 4; i++) {
+					cursor_move(ktod(key));
+					display(resource, map, system_map, status_map, consol_map, cursor);
+				}
+				lasttime = 0;
+			}
+			else {
+				cursor_move(ktod(key));
+			}
+			lasttime = clock();
+			prevkey = key;
 		}
 		else {
 			// 방향키 외의 입력
@@ -163,7 +184,6 @@ int main(void) {
 			}
 		}
 
-	
 		// 샘플 오브젝트 동작
 		sample_obj_move();
 
@@ -303,11 +323,11 @@ void game_map(void) {
 void cursor_move(DIRECTION dir) {
 	POSITION curr = cursor.current;
 	POSITION new_pos = pmove(curr, dir);
-
+	
 	// validation check
 	if (1 <= new_pos.row && new_pos.row <= MAP_HEIGHT - 2 && \
 		1 <= new_pos.column && new_pos.column <= MAP_WIDTH - 2) {
-
+		
 		cursor.previous = cursor.current;
 		cursor.current = new_pos;
 	}
@@ -388,9 +408,11 @@ void space_prass(void) {
 	//아군 베이스를 인식했을때(아군 적군 구별하는 방법 추가요함)
 	if (current_char == 'B') {
 		ally_base_info();
+		command_ally_base();
 	}
 	else if (current_char == 'H') {
 		ally_harvester_info();
+		command_ally_harvester();
 	}
 	else if (current_char == 'R') {
 		stone_rock_info();
@@ -411,16 +433,25 @@ void space_prass(void) {
 // ESC를 눌렀을때
 void ESC_prass(void) {
 	POSITION pos;
-	for (int i = 2; i < CONSOL_HEIGHT - 2; i++) {
-		for (int j = 4; j < CONSOL_WIDTH - 2; j++) {
+	for (int i = 2; i < STATUS_HEIGHT - 1; i++) {
+		for (int j = 4; j < STATUS_WIDTH - 2; j++) {
 			pos.row = i;
 			pos.column = MAP_WIDTH + j;
 			gotoxy(pos);
 			printf(" ");
 		}
 	}
+	for (int i = 3; i < CONSOL_HEIGHT - 1; i++) {
+		for (int j = 4; j < CONSOL_WIDTH - 2; j++) {
+			pos.row = MAP_HEIGHT + i;
+			pos.column = MAP_WIDTH + j;
+			gotoxy(pos);
+			printf(" ");
+		}
+	}
 }
-/* 유닛, 오브젝트, 건물 정보 출력 */
+
+/*===========유닛, 오브젝트, 건물 정보 출력===========*/
 void ally_base_info(void){
 	POSITION pos;
 	ESC_prass();
@@ -434,9 +465,7 @@ void ally_base_info(void){
 	pos.row += 1;
 	gotoxy(pos);
 	printf("오브젝트 정보: 건물");
-	pos.row += 1;
-	gotoxy(pos);
-	printf("명령어: H - 하베스터 생산");
+	
 }
 void ally_harvester_info(void) {
 	POSITION pos;
@@ -521,4 +550,34 @@ void desert_info(void) {
 	pos.row += 1;
 	gotoxy(pos);
 	printf("이 위치엔 건물을 지을수 없다.");
+}
+
+/*========명령어 출력========*/
+void command_ally_base(void) {
+	POSITION pos;
+	pos.row = MAP_HEIGHT + 2;
+	pos.column = MAP_WIDTH + 4;
+	pos.row += 1;
+	gotoxy(pos);
+	printf("명령어:");
+	pos.row += 1;
+	gotoxy(pos);
+	printf("\n");
+	pos.row += 1;
+	gotoxy(pos);
+	printf("H: 하베스터 생산");
+}
+void command_ally_harvester(void) {
+	POSITION pos;
+	pos.row = MAP_HEIGHT + 2;
+	pos.column = MAP_WIDTH + 4;
+	pos.row += 1;
+	gotoxy(pos);
+	printf("명령어:");
+	pos.row += 1;
+	gotoxy(pos);
+	printf("\n");
+	pos.row += 1;
+	gotoxy(pos);
+	printf("H: Harvest, M: Move");
 }
