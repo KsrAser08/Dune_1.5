@@ -42,6 +42,8 @@ typedef enum {
 	k_none = 0, k_up, k_right, k_left, k_down,
 	k_quit,
 	k_undef, // 정의되지 않은 키 입력	
+	k_space, //스페이스바 입력
+	k_esc, //ESC입력
 } KEY;
 
 
@@ -50,6 +52,10 @@ typedef enum {
 	d_stay = 0, d_up, d_right, d_left, d_down
 } DIRECTION;
 
+//아군 적군 타입나누기
+typedef enum {
+	ally = 0, neutral, enemy
+} TYPE_POS;
 
 /* ================= 위치와 방향(2) =================== */
 // 편의성을 위한 함수들. KEY, POSITION, DIRECTION 구조체들을 유기적으로 변환

@@ -60,6 +60,7 @@ void display(
 	// display_object_info()
 	// display_commands()
 	// ...
+
 }
 
 void display_resource(RESOURCE resource) {
@@ -113,7 +114,7 @@ void consol_project(char src[CONSOL_HEIGHT][CONSOL_WIDTH], char dest[CONSOL_HEIG
 		}
 	}
 }
-
+//디스플레이 색 출력
 void display_map(char map[N_LAYER][MAP_HEIGHT][MAP_WIDTH]) {
 	project(map, backbuf);
 

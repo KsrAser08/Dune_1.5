@@ -13,6 +13,18 @@ void cursor_move(DIRECTION dir);
 void sample_obj_move(void);
 POSITION sample_obj_next_position(void);
 
+void space_prass(void);
+void ESC_prass(void);
+
+char check_cursor_position(void); // 현재 커서에 있는 문자를 인식
+void ally_base_info(void); // 아군 베이스 현재 정보
+void ally_harvester_info(void); // 아군 하베스터 현재 정보
+void stone_rock_info(void); // 돌, 바위 현재 정보
+void sandworm_info(void); // 샌드웜 현재 정보
+void plate_info(void); // 장판 현재 정보
+void spice_info(void); // 스파이스 현재 정보
+void desert_info(void); // 사막 정보 표시
+
 /* ================= control =================== */
 int sys_clock = 0;		// system-wide clock(ms)
 CURSOR cursor = { {1, 1}, {1, 1} };
@@ -142,13 +154,16 @@ int main(void) {
 		else {
 			// 방향키 외의 입력
 			switch (key) {
-			case k_quit: outro();
+			case k_quit: outro(); break;
+			case k_space: space_prass(); break;
+			case k_esc:	ESC_prass(); break;
 			case k_none:
 			case k_undef:
 			default: break;
 			}
 		}
 
+	
 		// 샘플 오브젝트 동작
 		sample_obj_move();
 
@@ -160,17 +175,21 @@ int main(void) {
 }
 
 /* ================= subfunctions =================== */
+
+// 인트로
 void intro(void) {
 	printf("Dune 1.5");
 	Sleep(2000);
 	system("cls");
-}
+}  
 
+// 아웃트로
 void outro(void) {
 	printf("exiting...\n");
 	exit(0);
 }
 
+// #모양 지형생성
 void init(void) {
 	// layer 0(map[0])에 지형 생성
 	// 게임 화면
@@ -230,11 +249,6 @@ void init(void) {
 			consol_map[i][j] = ' ';
 		}
 	}
-
-
-
-
-
 	// object sample
 	map[1][obj.pos.row][obj.pos.column] = 'o';
 }
@@ -355,4 +369,156 @@ void sample_obj_move(void) {
 	map[1][obj.pos.row][obj.pos.column] = obj.repr;
 
 	obj.next_move_time = sys_clock + obj.move_period;
+}
+
+/*================= 입력 문자 확인 =============================*/
+// 커서에 위치해있는 문자 인식
+char check_cursor_position(void) {
+	int row = cursor.current.row;
+	int column = cursor.current.column;
+
+	if (map[1][row][column] >= 0) {
+		return map[1][row][column];
+	}
+	return map[0][row][column];
+}
+// 스페이스바를 눌렀을때
+void space_prass(void) {
+	char current_char = check_cursor_position();
+	//아군 베이스를 인식했을때(아군 적군 구별하는 방법 추가요함)
+	if (current_char == 'B') {
+		ally_base_info();
+	}
+	else if (current_char == 'H') {
+		ally_harvester_info();
+	}
+	else if (current_char == 'R') {
+		stone_rock_info();
+	}
+	else if (current_char == 'W') {
+		sandworm_info();
+	}
+	else if (current_char == '5' || current_char == '3') {
+		spice_info();
+	}
+	else if (current_char == 'P') {
+		plate_info();
+	}
+	else if (current_char == ' ') {
+		desert_info();
+	}
+}
+// ESC를 눌렀을때
+void ESC_prass(void) {
+	POSITION pos;
+	for (int i = 2; i < CONSOL_HEIGHT - 2; i++) {
+		for (int j = 4; j < CONSOL_WIDTH - 2; j++) {
+			pos.row = i;
+			pos.column = MAP_WIDTH + j;
+			gotoxy(pos);
+			printf(" ");
+		}
+	}
+}
+/* 유닛, 오브젝트, 건물 정보 출력 */
+void ally_base_info(void){
+	POSITION pos;
+	ESC_prass();
+	pos.row = 2;
+	pos.column = MAP_WIDTH + 4;
+	gotoxy(pos);
+	printf("- 건물 정보 -");
+	pos.row += 1;
+	gotoxy(pos);
+	printf("오브젝트 이름: 아군 본진");
+	pos.row += 1;
+	gotoxy(pos);
+	printf("오브젝트 정보: 건물");
+	pos.row += 1;
+	gotoxy(pos);
+	printf("명령어: H - 하베스터 생산");
+}
+void ally_harvester_info(void) {
+	POSITION pos;
+	ESC_prass();
+	pos.row = 2;
+	pos.column = MAP_WIDTH + 4;
+	gotoxy(pos);
+	printf("- 유닛 정보 -");
+	pos.row += 1;
+	gotoxy(pos);
+	printf("오브젝트 이름: 아군 하베스터");
+	pos.row += 1;
+	gotoxy(pos);
+	printf("오브젝트 정보: 유닛");
+}
+void stone_rock_info(void) {
+	POSITION pos;
+	ESC_prass();
+	pos.row = 2;
+	pos.column = MAP_WIDTH + 4;
+	gotoxy(pos);
+	printf("- 건물 정보 -");
+	pos.row += 1;
+	gotoxy(pos);
+	printf("오브젝트 이름: 돌,바위");
+	pos.row += 1;
+	gotoxy(pos);
+	printf("이 위치로는 유닛이 지나갈 수 없다.");
+}
+void sandworm_info(void) {
+	POSITION pos;
+	ESC_prass();
+	pos.row = 2;
+	pos.column = MAP_WIDTH + 4;
+	gotoxy(pos);
+	printf("- 유닛 정보 -");
+	pos.row += 1;
+	gotoxy(pos);
+	printf("오브젝트 이름: 샌드웜");
+	pos.row += 1;
+	gotoxy(pos);
+	printf("오브젝트 정보: 유닛");
+}
+void plate_info(void) {
+	POSITION pos;
+	ESC_prass();
+	pos.row = 2;
+	pos.column = MAP_WIDTH + 4;
+	gotoxy(pos);
+	printf("- 정보 - ");
+	pos.row += 1;
+	gotoxy(pos);
+	printf("오브젝트 이름: 장판");
+	pos.row += 1;
+	gotoxy(pos);
+	printf("이 위치에 건물을 지을수있다.");
+}
+void spice_info(void) {
+	POSITION pos;
+	ESC_prass();
+	pos.row = 2;
+	pos.column = MAP_WIDTH + 4;
+	gotoxy(pos);
+	printf("- 자원 정보 -");
+	pos.row += 1;
+	gotoxy(pos);
+	printf("오브젝트 이름: 스파이스");
+	pos.row += 1;
+	gotoxy(pos);
+	printf("오브젝트 정보: 건물(자원)");
+}
+void desert_info(void) {
+	POSITION pos;
+	ESC_prass();
+	pos.row = 2;
+	pos.column = MAP_WIDTH + 4;
+	gotoxy(pos);
+	printf("- 정보 -");
+	pos.row += 1;
+	gotoxy(pos);
+	printf("오브젝트 이름: 사막");
+	pos.row += 1;
+	gotoxy(pos);
+	printf("이 위치엔 건물을 지을수 없다.");
 }
