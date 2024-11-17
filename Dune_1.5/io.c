@@ -30,6 +30,8 @@ KEY get_key(void) {
 	case 'q': return k_quit;  // 'q'를 누르면 종료
 	case 32: return k_space; //32번 스페이스바
 	case 27: return k_esc; //2번 ESC
+	case 72: return k_H;
+	case 104: return k_h;
 	case 224:
 		byte = _getch();  // MSB 224가 입력 되면 1바이트 더 전달 받기
 		switch (byte) {

@@ -66,7 +66,7 @@ void display(
 void display_resource(RESOURCE resource) {
 	set_color(COLOR_RESOURCE);
 	gotoxy(resource_pos);
-	printf("spice = %d/%d, population=%d/%d\n",
+	printf("spice = %d/%d, population = %d/%d\n",
 		resource.spice, resource.spice_max,
 		resource.population, resource.population_max
 	);

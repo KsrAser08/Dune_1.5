@@ -11,17 +11,19 @@
 #define TICK 10		// time unit(ms)
 
 #define N_LAYER 2
-#define MAP_WIDTH	60	//맵의 크기
+#define MAP_WIDTH	60	// 맵의 크기
 #define MAP_HEIGHT	18
 
-#define SYSTEM_MES_WIDTH	60	//시스템 메세지의 크기
+#define SYSTEM_MES_WIDTH	60	// 시스템 메세지의 크기
 #define SYSTEM_MES_HEIGHT	8
 
-#define STATUS_WIDTH	50 //상태창의 크기
+#define STATUS_WIDTH	50 // 상태창의 크기
 #define STATUS_HEIGHT	18
 
-#define CONSOL_WIDTH	50 //명령창의 크기
+#define CONSOL_WIDTH	50 // 명령창의 크기
 #define CONSOL_HEIGHT	8
+
+#define ALL_MESSAGE 5 // 최대 시스템 메세지 갯수
 
 /* ================= 위치와 방향 =================== */
 // 맵에서 위치를 나타내는 구조체
@@ -43,6 +45,7 @@ typedef enum {
 	k_quit,
 	k_undef, // 정의되지 않은 키 입력	
 	k_space, //스페이스바 입력
+	k_H, k_h, //H입력
 	k_esc, //ESC입력
 } KEY;
 

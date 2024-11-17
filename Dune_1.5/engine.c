@@ -5,13 +5,30 @@
 #include "io.h"
 #include "display.h"
 
+/*====현재까지 구현한 내용====
+1. 준비 - (구현완료)
+2. 커서 & 상태창 - 방향키 더블클릭, 선택, 취소 (구현완료)
+3. 중립 유닛 - 샌드웜 두마리 모두 움직이며 확률적(5%)으로 스파이스 생성 구현 완료(움직이지만 o 유닛처럼 제자리로 돌아감.) // 실행 계속 해보며 밸런스(스파이스 매장량, 샌드웜 스파이스 생성 확률) 조정 예정!
+4. 유닛 생산 - H(하베스터)를 B베이스 위에서 명령어 h를 누를 경우에 본진 위에 생성됨 / esc를 누르면 명령창과 상태창이 없어지며 취소됨 / 스페이스바를 누른 뒤 다른키를 누르면 현 상태를 유지함 (구현 완료)
+5. 시스템 메세지 - 새로운 메세지는 맨 아래에 과거에 출력된 메세지는 맨 위로가게 출력함 (구현완료)
+*/
+
+// 함수 정렬
 void init(void);
 void game_map(void);
 void intro(void);
 void outro(void);
 void cursor_move(DIRECTION dir);
+
+void clear_messages(void);
+
 void sample_obj_move(void);
+void sandworm_obj_move(int sandworm_make_spice1);
+void sandworm1_obj_move(int sandworm_make_spice2);
+
 POSITION sample_obj_next_position(void);
+POSITION sandworm_obj_next_position(void);
+POSITION sandworm1_obj_next_position(void);
 
 void space_prass(void);
 void ESC_prass(void);
@@ -25,8 +42,14 @@ void plate_info(void); // 장판 현재 정보
 void spice_info(void); // 스파이스 현재 정보
 void desert_info(void); // 사막 정보 표시
 
+/*==========명령창==========*/
+void normally_command(void);
 void command_ally_base(void);
 void command_ally_harvester(void);
+
+void create_harvester(RESOURCE *resource);
+
+void system_message(const char* mes);
 
 /* ================= control =================== */
 int sys_clock = 0;		// system-wide clock(ms)
@@ -41,10 +64,10 @@ char consol_map[CONSOL_HEIGHT][CONSOL_WIDTH] = { 0 };
 
 //자원 정보
 RESOURCE resource = {  
-.spice = 0,
-.spice_max = 0,
+.spice = 5,
+.spice_max = 50,
 .population = 0,
-.population_max = 0
+.population_max = 200
 }; 
 
 OBJECT_SAMPLE obj = {
@@ -53,6 +76,22 @@ OBJECT_SAMPLE obj = {
 .repr = 'o',
 .move_period = 300,
 .next_move_time = 300
+};
+
+OBJECT_SAMPLE sandworm1 = {
+.pos = {MAP_HEIGHT - (MAP_HEIGHT - 3), MAP_WIDTH - (MAP_WIDTH - 10)},
+.dest = {MAP_HEIGHT - 2, MAP_WIDTH - 2},
+.repr = 'W',
+.move_period = 1000,
+.next_move_time = 1000
+};
+
+OBJECT_SAMPLE sandworm = {
+.pos = {MAP_HEIGHT - 7, (MAP_WIDTH + 36) - MAP_WIDTH},
+.dest = {MAP_HEIGHT - 2, MAP_WIDTH - 2},
+.repr = 'W',
+.move_period = 1000,
+.next_move_time = 1000
 };
 
 //아군 베이스 설정 'B'
@@ -137,12 +176,14 @@ OBJECT_BUILDING obj_sandworm = {
 .repr = 'W',
 .layer = 1,
 .A = {MAP_HEIGHT - (MAP_HEIGHT - 3), MAP_WIDTH - (MAP_WIDTH - 10)},
-.B = {MAP_HEIGHT - 6, MAP_WIDTH - (MAP_WIDTH + 24)}
+.B = {MAP_HEIGHT - 7, (MAP_WIDTH + 36) - MAP_WIDTH}
 };
 
 /* ================= main() =================== */
 int main(void) {
 	int prevkey = 0;
+	int sandworm_make_spice1 = 0, sandworm_make_spice2 = 0;
+	int count = 0;
 	clock_t lasttime = 0;
 
 	srand((unsigned int)time(NULL));
@@ -150,9 +191,10 @@ int main(void) {
 	game_map();
 	intro();
 	display(resource, map, system_map,status_map, consol_map, cursor);
-
+	normally_command();
 
 	while (1) {
+
 		// loop 돌 때마다(즉, TICK==10ms마다) 키 입력 확인
 		KEY key = get_key();
 
@@ -178,6 +220,8 @@ int main(void) {
 			case k_quit: outro(); break;
 			case k_space: space_prass(); break;
 			case k_esc:	ESC_prass(); break;
+			case k_h: create_harvester(&resource); break;
+			case k_H: create_harvester(&resource); break;
 			case k_none:
 			case k_undef:
 			default: break;
@@ -186,7 +230,11 @@ int main(void) {
 
 		// 샘플 오브젝트 동작
 		sample_obj_move();
-
+		// 샌드웜 오브젝트 움직임
+		sandworm_obj_move(sandworm_make_spice1);
+		sandworm1_obj_move(sandworm_make_spice2);
+		
+		//resource = 
 		// 화면 출력
 		display(resource, map, system_map, status_map, consol_map, cursor);
 		Sleep(TICK);
@@ -376,6 +424,92 @@ POSITION sample_obj_next_position(void) {
 		return obj.pos;  // 제자리
 	}
 }
+// 우측 하단 샌드웜 이동
+POSITION sandworm_obj_next_position(void) {
+	// 현재 위치와 목적지를 비교해서 이동 방향 결정	
+	POSITION diff = psub(sandworm.dest, sandworm.pos);
+	DIRECTION dir;
+
+	// 목적지 도착. 지금은 단순히 원래 자리로 왕복
+	if (diff.row == 0 && diff.column == 0) {
+		if (sandworm.dest.row == MAP_HEIGHT - 7 && sandworm.dest.column == (MAP_WIDTH + 36) - MAP_WIDTH) {
+			// topleft --> bottomright로 목적지 설정
+			POSITION new_dest = { 1, 1 };
+			sandworm.dest = new_dest;
+		}
+		else {
+			// bottomright --> topleft로 목적지 설정
+			POSITION new_dest = { MAP_HEIGHT - 7, (MAP_WIDTH + 36) - MAP_WIDTH };
+			sandworm.dest = new_dest;
+		}
+		return sandworm.pos;
+	}
+
+	// 가로축, 세로축 거리를 비교해서 더 먼 쪽 축으로 이동
+	if (abs(diff.row) >= abs(diff.column)) {
+		dir = (diff.row >= 0) ? d_down : d_up;
+	}
+	else {
+		dir = (diff.column >= 0) ? d_right : d_left;
+	}
+
+	// validation check
+	// next_pos가 맵을 벗어나지 않고, (지금은 없지만)장애물에 부딪히지 않으면 다음 위치로 이동
+	// 지금은 충돌 시 아무것도 안 하는데, 나중에는 장애물을 피해가거나 적과 전투를 하거나... 등등
+	POSITION next_pos = pmove(sandworm.pos, dir);
+	if (1 <= next_pos.row && next_pos.row <= MAP_HEIGHT - 2 && \
+		1 <= next_pos.column && next_pos.column <= MAP_WIDTH - 2 && \
+		map[1][next_pos.row][next_pos.column] < 0) {
+
+		return next_pos;
+	}
+	else {
+		return sandworm.pos;  // 제자리
+	}
+}
+// 좌측 상단 샌드웜 이동
+POSITION sandworm1_obj_next_position(void) {
+	// 현재 위치와 목적지를 비교해서 이동 방향 결정	
+	POSITION diff = psub(sandworm1.dest, sandworm1.pos);
+	DIRECTION dir;
+
+	// 목적지 도착. 지금은 단순히 원래 자리로 왕복
+	if (diff.row == 0 && diff.column == 0) {
+		if (sandworm1.dest.row == MAP_HEIGHT - (MAP_HEIGHT - 3) && sandworm1.dest.column == MAP_WIDTH - (MAP_WIDTH - 10)) {
+			// topleft --> bottomright로 목적지 설정
+			POSITION new_dest = { MAP_HEIGHT - 2, MAP_WIDTH - 2 };
+			sandworm1.dest = new_dest;
+		}
+		else {
+			// bottomright --> topleft로 목적지 설정
+			POSITION new_dest = { MAP_HEIGHT - (MAP_HEIGHT - 3), MAP_WIDTH - (MAP_WIDTH - 10) };
+			sandworm1.dest = new_dest;
+		}
+		return sandworm1.pos;
+	}
+
+	// 가로축, 세로축 거리를 비교해서 더 먼 쪽 축으로 이동
+	if (abs(diff.row) >= abs(diff.column)) {
+		dir = (diff.row >= 0) ? d_down : d_up;
+	}
+	else {
+		dir = (diff.column >= 0) ? d_right : d_left;
+	}
+
+	// validation check
+	// next_pos가 맵을 벗어나지 않고, (지금은 없지만)장애물에 부딪히지 않으면 다음 위치로 이동
+	// 지금은 충돌 시 아무것도 안 하는데, 나중에는 장애물을 피해가거나 적과 전투를 하거나... 등등
+	POSITION next_pos = pmove(sandworm1.pos, dir);
+	if (1 <= next_pos.row && next_pos.row <= MAP_HEIGHT - 2 && \
+		1 <= next_pos.column && next_pos.column <= MAP_WIDTH - 2 && \
+		map[1][next_pos.row][next_pos.column] < 0) {
+
+		return next_pos;
+	}
+	else {
+		return sandworm1.pos;  // 제자리
+	}
+}
 
 void sample_obj_move(void) {
 	if (sys_clock <= obj.next_move_time) {
@@ -389,6 +523,75 @@ void sample_obj_move(void) {
 	map[1][obj.pos.row][obj.pos.column] = obj.repr;
 
 	obj.next_move_time = sys_clock + obj.move_period;
+}
+
+void sandworm_obj_move(int sandworm_make_spice1) {
+	POSITION prev;
+
+	sandworm_make_spice1 = rand() % 100 + 1;  // 1 ~ 100까지 랜덤한 수 뽑기
+
+	if (sys_clock <= sandworm.next_move_time) {
+		// 아직 시간이 안 됐음
+		return;
+	}
+	
+	// 오브젝트(건물, 유닛 등)은 layer1(map[1])에 저장
+	map[1][sandworm.pos.row][sandworm.pos.column] = -1;
+	prev = sandworm.pos;
+	sandworm.pos = sandworm_obj_next_position();
+	map[1][sandworm.pos.row][sandworm.pos.column] = sandworm.repr;
+	// 5% 확률로 스파이스 매장지 생성
+	if (sandworm_make_spice1 <= 5) {
+		map[1][prev.row][prev.column] = '3';
+		system_message("샌드웜이 스파이스를 생성했습니다.");
+	}
+
+	sandworm.next_move_time = sys_clock + sandworm.move_period;
+}
+
+void sandworm1_obj_move(int sandworm_make_spice2) {
+	POSITION prev;
+	sandworm_make_spice2 = rand() % 100 + 1; // 1 ~ 100까지 랜덤한 수 뽑기
+
+	if (sys_clock <= sandworm1.next_move_time) {
+		// 아직 시간이 안 됐음
+		return;
+	}
+
+	// 오브젝트(건물, 유닛 등)은 layer1(map[1])에 저장
+	map[1][sandworm1.pos.row][sandworm1.pos.column] = -1;
+	prev = sandworm1.pos;
+	sandworm1.pos = sandworm1_obj_next_position();
+	map[1][sandworm1.pos.row][sandworm1.pos.column] = sandworm1.repr;
+	// 5% 확률로 스파이스 매장지 생성
+	if (sandworm_make_spice2 <= 5) {
+		map[1][prev.row][prev.column] = '3';
+		system_message("샌드웜이 스파이스를 생성했습니다.");
+	}
+
+	sandworm1.next_move_time = sys_clock + sandworm1.move_period;
+}
+
+
+/*================= 문자 청소 =================*/
+void clear_messages(void) {
+	POSITION pos;
+	for (int i = 2; i < STATUS_HEIGHT - 1; i++) {
+		for (int j = 4; j < STATUS_WIDTH - 2; j++) {
+			pos.row = i;
+			pos.column = MAP_WIDTH + j;
+			gotoxy(pos);
+			printf(" ");
+		}
+	}
+	for (int i = 3; i < CONSOL_HEIGHT - 1; i++) {
+		for (int j = 4; j < CONSOL_WIDTH - 2; j++) {
+			pos.row = MAP_HEIGHT + i;
+			pos.column = MAP_WIDTH + j;
+			gotoxy(pos);
+			printf(" ");
+		}
+	}
 }
 
 /*================= 입력 문자 확인 =============================*/
@@ -407,26 +610,33 @@ void space_prass(void) {
 	char current_char = check_cursor_position();
 	//아군 베이스를 인식했을때(아군 적군 구별하는 방법 추가요함)
 	if (current_char == 'B') {
+		clear_messages();
 		ally_base_info();
 		command_ally_base();
 	}
 	else if (current_char == 'H') {
+		clear_messages();
 		ally_harvester_info();
 		command_ally_harvester();
 	}
 	else if (current_char == 'R') {
+		clear_messages();
 		stone_rock_info();
 	}
 	else if (current_char == 'W') {
+		clear_messages();
 		sandworm_info();
 	}
 	else if (current_char == '5' || current_char == '3') {
+		clear_messages();
 		spice_info();
 	}
 	else if (current_char == 'P') {
+		clear_messages();
 		plate_info();
 	}
 	else if (current_char == ' ') {
+		clear_messages();
 		desert_info();
 	}
 }
@@ -449,12 +659,12 @@ void ESC_prass(void) {
 			printf(" ");
 		}
 	}
+	normally_command();
 }
 
 /*===========유닛, 오브젝트, 건물 정보 출력===========*/
 void ally_base_info(void){
 	POSITION pos;
-	ESC_prass();
 	pos.row = 2;
 	pos.column = MAP_WIDTH + 4;
 	gotoxy(pos);
@@ -469,7 +679,6 @@ void ally_base_info(void){
 }
 void ally_harvester_info(void) {
 	POSITION pos;
-	ESC_prass();
 	pos.row = 2;
 	pos.column = MAP_WIDTH + 4;
 	gotoxy(pos);
@@ -483,7 +692,6 @@ void ally_harvester_info(void) {
 }
 void stone_rock_info(void) {
 	POSITION pos;
-	ESC_prass();
 	pos.row = 2;
 	pos.column = MAP_WIDTH + 4;
 	gotoxy(pos);
@@ -497,7 +705,6 @@ void stone_rock_info(void) {
 }
 void sandworm_info(void) {
 	POSITION pos;
-	ESC_prass();
 	pos.row = 2;
 	pos.column = MAP_WIDTH + 4;
 	gotoxy(pos);
@@ -511,7 +718,6 @@ void sandworm_info(void) {
 }
 void plate_info(void) {
 	POSITION pos;
-	ESC_prass();
 	pos.row = 2;
 	pos.column = MAP_WIDTH + 4;
 	gotoxy(pos);
@@ -525,7 +731,6 @@ void plate_info(void) {
 }
 void spice_info(void) {
 	POSITION pos;
-	ESC_prass();
 	pos.row = 2;
 	pos.column = MAP_WIDTH + 4;
 	gotoxy(pos);
@@ -539,7 +744,6 @@ void spice_info(void) {
 }
 void desert_info(void) {
 	POSITION pos;
-	ESC_prass();
 	pos.row = 2;
 	pos.column = MAP_WIDTH + 4;
 	gotoxy(pos);
@@ -552,7 +756,22 @@ void desert_info(void) {
 	printf("이 위치엔 건물을 지을수 없다.");
 }
 
+
 /*========명령어 출력========*/
+void normally_command(void) {
+	POSITION pos;
+	pos.row = MAP_HEIGHT + 2;
+	pos.column = MAP_WIDTH + 4;
+	pos.row += 1;
+	gotoxy(pos);
+	printf("명령어:");
+	pos.row += 1;
+	gotoxy(pos);
+	printf("\n");
+	pos.row += 1;
+	gotoxy(pos);
+	printf("B: 건물 건설");
+}
 void command_ally_base(void) {
 	POSITION pos;
 	pos.row = MAP_HEIGHT + 2;
@@ -580,4 +799,69 @@ void command_ally_harvester(void) {
 	pos.row += 1;
 	gotoxy(pos);
 	printf("H: Harvest, M: Move");
+}
+
+/*=========상태창 정보 출력==========*/
+const char* many_massage[ALL_MESSAGE];
+const char* backbuf_massage = NULL;
+
+// 상태 메세지를 제일 아래에 출력함.
+void system_message(const char* mes) {
+	POSITION pos;
+	
+	//시스템 메세지 칸 비우기
+	for (int i = 3; i < SYSTEM_MES_HEIGHT + 1; i++) { 
+		for (int j = 1; j < SYSTEM_MES_WIDTH - 1; j++) {
+			pos.row = MAP_HEIGHT + i;
+			pos.column = j;
+			gotoxy(pos);
+			printf(" ");
+		}
+	}
+	//출력 시작 고정
+	pos.column = 2;
+
+	if (backbuf_massage != NULL) {
+		// 전에 출력된 메세지들 한칸 위로 이동
+		for (int i = 0; i < ALL_MESSAGE - 1; i++) {
+			many_massage[i] = many_massage[i + 1];
+		}
+		many_massage[ALL_MESSAGE - 1] = backbuf_massage;
+	}
+
+	// 전에 출력된 메세지들 밀어서 출력
+	for (int i = 0; i < ALL_MESSAGE; i++) {
+		if (many_massage[i] != NULL) {
+			pos.row = MAP_HEIGHT + 3 + i;
+			gotoxy(pos);
+			printf("%s", many_massage[i]);
+		}
+	}
+
+	// 새 메세지 맨 아래 출력
+	pos.row = MAP_HEIGHT + 8;
+	gotoxy(pos);
+	printf("%s", mes);
+	backbuf_massage = mes;
+
+}
+
+/*===========하베스터 생산===========*/
+void create_harvester(RESOURCE *resource) {
+	POSITION pos;
+	char current_char = check_cursor_position();
+
+	if (current_char == 'B') {
+		if (resource->spice >= 5 && resource->population + 5 <= resource->population_max) {
+			pos.row = MAP_HEIGHT - 4;
+			pos.column = MAP_WIDTH - (MAP_WIDTH - 2);
+			map[1][pos.row][pos.column] = 'H';
+			resource->spice -= 5;
+			resource->population += 5;
+			system_message("본진에서 성공적으로 하베스터를 생성했습니다.");
+		}
+		else {
+			system_message("자원 또는 인구수가 부족합니다.");
+		}
+	}
 }
