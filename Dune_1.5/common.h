@@ -25,6 +25,9 @@
 
 #define ALL_MESSAGE 5 // 최대 시스템 메세지 갯수
 
+#define MAX_UNIT 100  // 최대 유닛 수 정의
+
+
 /* ================= 위치와 방향 =================== */
 // 맵에서 위치를 나타내는 구조체
 typedef struct {
@@ -110,10 +113,21 @@ typedef struct {
 	int next_move_time;	// 다음에 움직일 시간
 } OBJECT_SAMPLE;
 
+// 건물 관련
 typedef struct {
 	POSITION A,B,C,D; //건물 칸수 2 X 2
 	char repr; //화면에 표시할 문자 - 건물 이름
 	int layer; //어느 레이어인지 표시
+	int formation; //아군, 적군중 어디인지 확인하기 위함 / 1 = 아군, 2 = 적군
+	int units[];
 }OBJECT_BUILDING;
 
+//샌드웜 관련
+typedef struct {
+	POSITION pos;		// 현재 위치(position)
+	POSITION dest;		// 목적지(destination)
+	char sandworm_repr;	// 화면에 표시할 문자(representation)
+	int move_period;	// '몇 ms마다 한 칸 움직이는지'를 뜻함
+	int next_move_time;	// 다음에 움직일 시간
+}SANDWORM;
 #endif

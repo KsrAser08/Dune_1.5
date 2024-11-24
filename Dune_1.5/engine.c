@@ -10,7 +10,7 @@
 2. 커서 & 상태창 - 방향키 더블클릭, 선택, 취소 (구현완료)
 3. 중립 유닛 - 샌드웜 두마리 모두 움직이며 확률적(5%)으로 스파이스 생성 구현 완료(움직이지만 o 유닛처럼 제자리로 돌아감.) // 실행 계속 해보며 밸런스(스파이스 매장량, 샌드웜 스파이스 생성 확률) 조정 예정!
 4. 유닛 생산 - H(하베스터)를 B베이스 위에서 명령어 h를 누를 경우에 본진 위에 생성됨 / esc를 누르면 명령창과 상태창이 없어지며 취소됨 / 스페이스바를 누른 뒤 다른키를 누르면 현 상태를 유지함 (구현 완료)
-5. 시스템 메세지 - 새로운 메세지는 맨 아래에 과거에 출력된 메세지는 맨 위로가게 출력함 (구현완료)
+5. 시스템 메세지 - 새로운 메세지는 맨 아래에 과거에 출력된 메세지는 한칸씩 위로가게 출력함 (구현완료)
 */
 
 // 함수 정렬
@@ -78,18 +78,18 @@ OBJECT_SAMPLE obj = {
 .next_move_time = 300
 };
 
-OBJECT_SAMPLE sandworm1 = {
+SANDWORM sandworm1 = {
 .pos = {MAP_HEIGHT - (MAP_HEIGHT - 3), MAP_WIDTH - (MAP_WIDTH - 10)},
 .dest = {MAP_HEIGHT - 2, MAP_WIDTH - 2},
-.repr = 'W',
+.sandworm_repr = 'W',
 .move_period = 1000,
 .next_move_time = 1000
 };
 
-OBJECT_SAMPLE sandworm = {
+SANDWORM sandworm = {
 .pos = {MAP_HEIGHT - 7, (MAP_WIDTH + 36) - MAP_WIDTH},
 .dest = {MAP_HEIGHT - 2, MAP_WIDTH - 2},
-.repr = 'W',
+.sandworm_repr = 'W',
 .move_period = 1000,
 .next_move_time = 1000
 };
@@ -101,7 +101,8 @@ OBJECT_BUILDING obj_ally_build = {
 .A = {MAP_HEIGHT - 3, MAP_WIDTH - (MAP_WIDTH - 1)},
 .B = {MAP_HEIGHT - 2, MAP_WIDTH - (MAP_WIDTH - 1)},
 .C = {MAP_HEIGHT - 3, MAP_WIDTH - (MAP_WIDTH - 2)},
-.D = {MAP_HEIGHT - 2, MAP_WIDTH - (MAP_WIDTH - 2)}
+.D = {MAP_HEIGHT - 2, MAP_WIDTH - (MAP_WIDTH - 2)},
+.formation = 1
 };
 //적군 베이스 설정 'B'
 OBJECT_BUILDING obj_enemy_build = {
@@ -110,21 +111,29 @@ OBJECT_BUILDING obj_enemy_build = {
 .A = {MAP_HEIGHT - (MAP_HEIGHT - 2), MAP_WIDTH - (MAP_WIDTH + 3)},
 .B = {MAP_HEIGHT - (MAP_HEIGHT - 3), MAP_WIDTH - (MAP_WIDTH + 3)},
 .C = {MAP_HEIGHT - (MAP_HEIGHT - 2), MAP_WIDTH - (MAP_WIDTH + 2)},
-.D = {MAP_HEIGHT - (MAP_HEIGHT - 3), MAP_WIDTH - (MAP_WIDTH + 2)}
+.D = {MAP_HEIGHT - (MAP_HEIGHT - 3), MAP_WIDTH - (MAP_WIDTH + 2)},
+.formation = 2
 };
-//아군, 적군 하베스터 추가 'H'
-OBJECT_BUILDING obj_Harvester = {
+//아군 하베스터 추가 'H'
+OBJECT_BUILDING obj_ally_Harvester = {
 .repr = 'H',
 .layer = 1,
 .A = {MAP_HEIGHT - 4, MAP_WIDTH - (MAP_WIDTH - 1)}, //아군 하베스터
-.B = {MAP_HEIGHT - (MAP_HEIGHT - 4), MAP_WIDTH - (MAP_WIDTH + 2)} //적군 하베스터
+.formation = 1
 };
-//아군, 적군 스파이스 추가 'H'
+//적군 하베스터 추가 'H'
+OBJECT_BUILDING obj_enemy_Harvester = {
+.repr = 'H',
+.layer = 1,
+.A = {MAP_HEIGHT - (MAP_HEIGHT - 3), ((MAP_WIDTH * 2) - 2) - MAP_WIDTH}, //적군 하베스터
+.formation = 2
+};
+//아군측, 적군측에 위치한 스파이스
 OBJECT_BUILDING obj_spice = {
 .repr = '5',
 .layer = 0,
-.A = {MAP_HEIGHT - 8, MAP_WIDTH - (MAP_WIDTH - 1)}, //아군 스파이스
-.B = {MAP_HEIGHT - (MAP_HEIGHT - 8), MAP_WIDTH - (MAP_WIDTH + 2)} //적군 스파이스
+.A = {MAP_HEIGHT - 8, MAP_WIDTH - (MAP_WIDTH - 1)}, //아군측 스파이스
+.B = {MAP_HEIGHT - (MAP_HEIGHT - 8), MAP_WIDTH - (MAP_WIDTH + 2)} //적군측 스파이스
 
 };
 //아군쪽 장판 추가 'P'
@@ -334,8 +343,8 @@ void game_map(void) {
 	map[obj_enemy_build.layer][obj_enemy_build.C.row][obj_enemy_build.C.column] = obj_enemy_build.repr;
 	map[obj_enemy_build.layer][obj_enemy_build.D.row][obj_enemy_build.D.column] = obj_enemy_build.repr;
 	//아군, 적군 하베스터 추가 H
-	map[obj_Harvester.layer][obj_Harvester.A.row][obj_Harvester.A.column] = obj_Harvester.repr;
-	map[obj_Harvester.layer][obj_Harvester.B.row][obj_Harvester.B.column] = obj_Harvester.repr;
+	map[obj_ally_Harvester.layer][obj_ally_Harvester.A.row][obj_ally_Harvester.A.column] = obj_ally_Harvester.repr;
+	map[obj_enemy_Harvester.layer][obj_enemy_Harvester.A.row][obj_enemy_Harvester.A.column] = obj_enemy_Harvester.repr;
 	//아군, 적군 스파이스 추가 H
 	map[obj_spice.layer][obj_spice.A.row][obj_spice.A.column] = obj_spice.repr;
 	map[obj_spice.layer][obj_spice.B.row][obj_spice.B.column] = obj_spice.repr;
@@ -425,6 +434,7 @@ POSITION sample_obj_next_position(void) {
 	}
 }
 // 우측 하단 샌드웜 이동
+
 POSITION sandworm_obj_next_position(void) {
 	// 현재 위치와 목적지를 비교해서 이동 방향 결정	
 	POSITION diff = psub(sandworm.dest, sandworm.pos);
@@ -467,6 +477,69 @@ POSITION sandworm_obj_next_position(void) {
 		return sandworm.pos;  // 제자리
 	}
 }
+
+//POSITION sandworm_obj_next_position(OBJECT_SAMPLE units[], int unit_count) {
+//	// 가장 가까운 유닛 탐색
+//	POSITION closest_unit_pos = { -1, -1 };  // 가장 가까운 유닛의 위치
+//	int min_distance = MAP_WIDTH + MAP_HEIGHT;  // 최소 거리 초기화 (최대 맵 크기)
+//
+//	for (int i = 0; i < unit_count; i++) {
+//		OBJECT_SAMPLE unit = units[i];
+//
+//		// 레이어가 1인 유닛만 탐색
+//		if (unit.layer != 1) continue;
+//
+//		// 거리 계산 (맨해튼 거리)
+//		int distance = abs(sandworm.pos.row - unit.pos.row) +
+//			abs(sandworm.pos.column - unit.pos.column);
+//
+//		// 최소 거리 갱신
+//		if (distance < min_distance) {
+//			min_distance = distance;
+//			closest_unit_pos = unit.pos;
+//		}
+//	}
+//
+//	// 가장 가까운 유닛이 없는 경우
+//	if (closest_unit_pos.row == -1 && closest_unit_pos.column == -1) {
+//		return sandworm.pos;  // 이동하지 않음
+//	}
+//
+//	// 새로운 목적지 설정
+//	sandworm.dest = closest_unit_pos;
+//
+//	// 현재 위치와 목적지 비교
+//	POSITION diff = psub(sandworm.dest, sandworm.pos);
+//	DIRECTION dir;
+//
+//	// 목적지 도착
+//	if (diff.row == 0 && diff.column == 0) {
+//		return sandworm.pos;  // 도착했으므로 대기
+//	}
+//
+//	// 이동 방향 결정 (가로/세로 거리 비교)
+//	if (abs(diff.row) >= abs(diff.column)) {
+//		dir = (diff.row >= 0) ? d_down : d_up;
+//	}
+//	else {
+//		dir = (diff.column >= 0) ? d_right : d_left;
+//	}
+//
+//	// 다음 위치 계산
+//	POSITION next_pos = pmove(sandworm.pos, dir);
+//
+//	// 충돌 검사 및 맵 유효성 확인
+//	if (1 <= next_pos.row && next_pos.row <= MAP_HEIGHT - 2 &&
+//		1 <= next_pos.column && next_pos.column <= MAP_WIDTH - 2 &&
+//		map[1][next_pos.row][next_pos.column] < 0) {
+//
+//		return next_pos;  // 이동
+//	}
+//	else {
+//		return sandworm.pos;  // 충돌 시 이동하지 않음
+//	}
+//}
+
 // 좌측 상단 샌드웜 이동
 POSITION sandworm1_obj_next_position(void) {
 	// 현재 위치와 목적지를 비교해서 이동 방향 결정	
@@ -539,7 +612,7 @@ void sandworm_obj_move(int sandworm_make_spice1) {
 	map[1][sandworm.pos.row][sandworm.pos.column] = -1;
 	prev = sandworm.pos;
 	sandworm.pos = sandworm_obj_next_position();
-	map[1][sandworm.pos.row][sandworm.pos.column] = sandworm.repr;
+	map[1][sandworm.pos.row][sandworm.pos.column] = sandworm.sandworm_repr;
 	// 5% 확률로 스파이스 매장지 생성
 	if (sandworm_make_spice1 <= 5) {
 		map[1][prev.row][prev.column] = '3';
@@ -562,7 +635,7 @@ void sandworm1_obj_move(int sandworm_make_spice2) {
 	map[1][sandworm1.pos.row][sandworm1.pos.column] = -1;
 	prev = sandworm1.pos;
 	sandworm1.pos = sandworm1_obj_next_position();
-	map[1][sandworm1.pos.row][sandworm1.pos.column] = sandworm1.repr;
+	map[1][sandworm1.pos.row][sandworm1.pos.column] = sandworm1.sandworm_repr;
 	// 5% 확률로 스파이스 매장지 생성
 	if (sandworm_make_spice2 <= 5) {
 		map[1][prev.row][prev.column] = '3';
