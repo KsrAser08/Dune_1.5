@@ -8,12 +8,14 @@
 #include "display.h"
 #include "io.h"
 
+int cursor_size = 1; //커서 사이즈 지정
 // 출력할 내용들의 좌상단(topleft) 좌표
 const POSITION resource_pos = { 0, 0 };
 const POSITION map_pos = { 1, 0 };
 const POSITION system_map_pos = { MAP_HEIGHT + 2, 0 };
 const POSITION status_map_pos = { 1, MAP_WIDTH + 2 };
 const POSITION consol_map_pos = { MAP_HEIGHT + 2, MAP_WIDTH + 2 };
+
 
 char backbuf[MAP_HEIGHT][MAP_WIDTH] = { 0 };
 char frontbuf[MAP_HEIGHT][MAP_WIDTH] = { 0 };
@@ -41,6 +43,7 @@ void consol_project(char src[CONSOL_HEIGHT][CONSOL_WIDTH], char dest[CONSOL_HEIG
 void display_consol_map(char consol_map[CONSOL_HEIGHT][CONSOL_WIDTH]);
 
 void display_cursor(CURSOR cursor);
+int is_blocked(int row, int col);
 
 
 void display(
@@ -57,9 +60,7 @@ void display(
 	display_system_map(system_map);
 	display_status_map(status_map);
 	display_consol_map(consol_map);
-	// display_object_info()
-	// display_commands()
-	// ...
+	
 
 }
 
@@ -157,7 +158,9 @@ void display_map(char map[N_LAYER][MAP_HEIGHT][MAP_WIDTH]) {
 					printc(padd(map_pos, pos), backbuf[i][j], COLOR_DEFAULT + 128);
 				}
 				//자원 스파이스 색
-				else if (backbuf[i][j] == '5' || backbuf[i][j] == '3') {
+				else if (backbuf[i][j] == '3' || backbuf[i][j] == '4' || backbuf[i][j] == '5' \
+					|| backbuf[i][j] == '6' || backbuf[i][j] == '7') 
+				{
 					POSITION pos = { i, j };
 					printc(padd(map_pos, pos), backbuf[i][j], COLOR_DEFAULT + 48);
 				}
@@ -223,47 +226,72 @@ void display_cursor(CURSOR cursor) {
 	POSITION prev = cursor.previous;
 	POSITION curr = cursor.current;
 
-	char ch = frontbuf[prev.row][prev.column];
+	// 이전 커서 위치 복원 (1x1 또는 2x2)
+	for (int i = 0; i < cursor.size; i++) {
+		for (int j = 0; j < cursor.size; j++) {
+			POSITION restore_pos = { prev.row + i, prev.column + j };
+			char ch = frontbuf[restore_pos.row][restore_pos.column];
 
-	//배경 색
-	if (frontbuf[prev.row][prev.column] == ' ') {
-		printc(padd(map_pos, prev), ch, COLOR_DEFAULT + 224);
+			// 원래 문자와 색 복원
+			if (ch == ' ') {
+				printc(padd(map_pos, restore_pos), ch, COLOR_DEFAULT + 224);  // 배경색 복원
+			}
+			else if (ch == 'B' && restore_pos.row > MAP_HEIGHT - (MAP_HEIGHT / 2)) {
+				printc(padd(map_pos, restore_pos), ch, COLOR_DEFAULT + 15);
+			}
+			else if (ch == 'B') {
+				printc(padd(map_pos, restore_pos), ch, COLOR_DEFAULT + 64);
+			}
+			else if (ch == 'H' && restore_pos.row > MAP_HEIGHT - (MAP_HEIGHT / 2)) {
+				printc(padd(map_pos, restore_pos), ch, COLOR_DEFAULT + 15);  // 아군 하베스터
+			}
+			else if (ch == 'H') {
+				printc(padd(map_pos, restore_pos), ch, COLOR_DEFAULT + 64);  // 적군 하베스터
+			}
+			else if (ch == 'P') {
+				printc(padd(map_pos, restore_pos), ch, COLOR_DEFAULT);  // 장판
+			}
+			else if (ch == 'R') {
+				printc(padd(map_pos, restore_pos), ch, COLOR_DEFAULT + 128);  // 바위
+			}
+			else if (ch == '3' || ch == '4' || ch == '5' || ch == '6' || ch == '7') {  // 스파이스 색 복원
+				printc(padd(map_pos, restore_pos), ch, COLOR_DEFAULT + 48);  // 스파이스 색 복원
+			}
+			else if (ch == 'W') {  // 샌드웜 색 복원
+				printc(padd(map_pos, restore_pos), ch, COLOR_DEFAULT + 96);  // 샌드웜 색 복원
+			}
+			else {
+				printc(padd(map_pos, restore_pos), ch, COLOR_DEFAULT);  // 기본 복원
+			}
+		}
 	}
-	//아군 본진 색
-	else if (frontbuf[prev.row][prev.column] == 'B' && prev.row > MAP_HEIGHT - (MAP_HEIGHT / 2)) {
-		printc(padd(map_pos, prev), ch, COLOR_DEFAULT + 15);
+
+	// 현재 커서 위치 출력 (2x2 크기, 장애물 체크)
+	for (int i = 0; i < cursor.size; i++) {
+		for (int j = 0; j < cursor.size; j++) {
+			POSITION cursor_pos = { curr.row + i, curr.column + j };
+
+			// 장애물 체크: 현재 커서가 위치한 곳에서 장애물이 있으면 이동하지 않음
+			if (is_blocked(curr.row + 1, curr.column + 1) == '#') {
+				continue;  // 장애물이 있으면 해당 위치로 커서를 이동하지 않음
+			}
+
+			// 장애물이 없으면 커서를 출력
+			printc(padd(map_pos, cursor_pos), ' ', COLOR_CURSOR);
+		}
 	}
-	//적군 본진 색
-	else if (frontbuf[prev.row][prev.column] == 'B') {
-		printc(padd(map_pos, prev), ch, COLOR_DEFAULT + 64);
-	}
-	//아군 하베스터 색(수정 필요)
-	else if (frontbuf[prev.row][prev.column] == 'H' && prev.row > MAP_HEIGHT - (MAP_HEIGHT / 2)) {
-		printc(padd(map_pos, prev), ch, COLOR_DEFAULT + 15);
-	}
-	//적군 하베스터 색(수정 필요)
-	else if (frontbuf[prev.row][prev.column] == 'H') {
-		printc(padd(map_pos, prev), ch, COLOR_DEFAULT + 64);
-	}
-	//중립 장판 색
-	else if (frontbuf[prev.row][prev.column] == 'P') {
-		printc(padd(map_pos, prev), ch, COLOR_DEFAULT);
-	}
-	//중립 바위 색
-	else if (frontbuf[prev.row][prev.column] == 'R') {
-		printc(padd(map_pos, prev), ch, COLOR_DEFAULT + 128);
-	}
-	//자원 스파이스 색
-	else if (frontbuf[prev.row][prev.column] == '5' || frontbuf[prev.row][prev.column] == '3') {
-		printc(padd(map_pos, prev), ch, COLOR_DEFAULT + 48);
-	}
-	//중립 샌드웜 색
-	else if (frontbuf[prev.row][prev.column] == 'W') {
-		printc(padd(map_pos, prev), ch, COLOR_DEFAULT + 96);
-	}
-	else {
-		printc(padd(map_pos, prev), ch, COLOR_DEFAULT);
-	}
-	ch = frontbuf[curr.row][curr.column];
-	printc(padd(map_pos, curr), ch, COLOR_CURSOR);
 }
+
+int is_blocked(int row, int col) {
+	if (frontbuf[row][col] == '#') {
+		return 1;  // 장애물 발견, 이동 불가
+	}
+
+	// 현재 위치가 #이면 이동 불가
+	if (frontbuf[row][col] == '#') {
+		return 1;  // 현재 위치가 #이므로 이동 불가
+	}
+
+	return 0;  // 장애물 없음, 이동 가능
+}
+

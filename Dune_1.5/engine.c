@@ -26,12 +26,14 @@ void sample_obj_move(void);
 void sandworm_obj_move(int sandworm_make_spice1);
 void sandworm1_obj_move(int sandworm_make_spice2);
 
+POSITION near_unit(POSITION pos);
 POSITION sample_obj_next_position(void);
 POSITION sandworm_obj_next_position(void);
 POSITION sandworm1_obj_next_position(void);
 
 void space_prass(void);
 void ESC_prass(void);
+void B_prass(RESOURCE* resource, CURSOR* cursor);
 
 char check_cursor_position(void); // 현재 커서에 있는 문자를 인식
 void ally_base_info(void); // 아군 베이스 현재 정보
@@ -46,6 +48,7 @@ void desert_info(void); // 사막 정보 표시
 void normally_command(void);
 void command_ally_base(void);
 void command_ally_harvester(void);
+void command_can_build(void);
 
 void create_harvester(RESOURCE *resource);
 
@@ -55,7 +58,7 @@ void system_message(const char* mes);
 int sys_clock = 0;		// system-wide clock(ms)
 int cursor_clock = 0;
 
-CURSOR cursor = { {1, 1}, {1, 1} };
+CURSOR cursor = { {1, 1}, {1, 1}, .size = 1 };
 /* ================= game data =================== */
 char map[N_LAYER][MAP_HEIGHT][MAP_WIDTH] = { 0 };
 char system_map[SYSTEM_MES_HEIGHT][SYSTEM_MES_WIDTH] = { 0 };
@@ -64,10 +67,10 @@ char consol_map[CONSOL_HEIGHT][CONSOL_WIDTH] = { 0 };
 
 //자원 정보
 RESOURCE resource = {  
-.spice = 5,
-.spice_max = 50,
+.spice = 0,
+.spice_max = 30,
 .population = 0,
-.population_max = 200
+.population_max = 10
 }; 
 
 OBJECT_SAMPLE obj = {
@@ -82,16 +85,16 @@ SANDWORM sandworm1 = {
 .pos = {MAP_HEIGHT - (MAP_HEIGHT - 3), MAP_WIDTH - (MAP_WIDTH - 10)},
 .dest = {MAP_HEIGHT - 2, MAP_WIDTH - 2},
 .sandworm_repr = 'W',
-.move_period = 1000,
-.next_move_time = 1000
+.move_period = 1400,
+.next_move_time = 1400
 };
 
 SANDWORM sandworm = {
 .pos = {MAP_HEIGHT - 7, (MAP_WIDTH + 36) - MAP_WIDTH},
 .dest = {MAP_HEIGHT - 2, MAP_WIDTH - 2},
 .sandworm_repr = 'W',
-.move_period = 1000,
-.next_move_time = 1000
+.move_period = 1400,
+.next_move_time = 1400
 };
 
 //아군 베이스 설정 'B'
@@ -231,6 +234,8 @@ int main(void) {
 			case k_esc:	ESC_prass(); break;
 			case k_h: create_harvester(&resource); break;
 			case k_H: create_harvester(&resource); break;
+			case k_b: B_prass(&resource, &cursor); break;
+			case k_B: B_prass(&resource, &cursor); break;
 			case k_none:
 			case k_undef:
 			default: break;
@@ -243,7 +248,6 @@ int main(void) {
 		sandworm_obj_move(sandworm_make_spice1);
 		sandworm1_obj_move(sandworm_make_spice2);
 		
-		//resource = 
 		// 화면 출력
 		display(resource, map, system_map, status_map, consol_map, cursor);
 		Sleep(TICK);
@@ -330,6 +334,7 @@ void init(void) {
 	map[1][obj.pos.row][obj.pos.column] = 'o';
 }
 
+
 // 건물,지형 / 유닛 맵 안에 배치
 void game_map(void) {
 	// 아군 베이스 추가 B
@@ -380,17 +385,54 @@ void game_map(void) {
 void cursor_move(DIRECTION dir) {
 	POSITION curr = cursor.current;
 	POSITION new_pos = pmove(curr, dir);
-	
-	// validation check
-	if (1 <= new_pos.row && new_pos.row <= MAP_HEIGHT - 2 && \
-		1 <= new_pos.column && new_pos.column <= MAP_WIDTH - 2) {
-		
-		cursor.previous = cursor.current;
-		cursor.current = new_pos;
+	if (cursor.size == 2) {
+		if (1 <= new_pos.row && new_pos.row <= MAP_HEIGHT - 3 &&
+			1 <= new_pos.column && new_pos.column <= MAP_WIDTH - 3) {
+
+			cursor.previous = cursor.current;  // 이전 위치 저장
+			cursor.current = new_pos;          // 새 위치로 커서 이동
+		}
+	}
+	else {
+		// validation check
+		if (1 <= new_pos.row && new_pos.row <= MAP_HEIGHT - 2 && \
+			1 <= new_pos.column && new_pos.column <= MAP_WIDTH - 2) {
+
+			cursor.previous = cursor.current;
+			cursor.current = new_pos;
+		}
 	}
 }
 
 /* ================= sample object movement =================== */
+
+//가장 가까운 유닛 구하는 함수
+POSITION near_unit(POSITION pos) {
+	int min_distance = MAP_WIDTH * MAP_HEIGHT;
+	POSITION nearest_unit = { -1, -1 }; 
+
+	for (int i = 0; i < MAP_HEIGHT; i++) {
+		for (int j = 0; j < MAP_WIDTH; j++) {
+			// 레이어 1에서 유닛('H') 찾기
+			if (map[1][i][j] == 'H') {
+				POSITION unit_pos = { i, j };
+
+				// psub를 사용하여 두 위치의 차이를 계산
+				POSITION diff = psub(pos, unit_pos); // pos와 유닛 위치의 벡터 차이 계산
+				int distance = abs(diff.row) + abs(diff.column); // 맨해튼 거리 계산
+
+				// 더 가까운 유닛이 발견되면 업데이트
+				if (distance < min_distance) {
+					min_distance = distance;
+					nearest_unit = unit_pos;
+				}
+			}
+		}
+	}
+	return nearest_unit;
+}
+
+// 'o'유닛 이동 (나중에 레이어2(공중)에 독수리(?)로 만들예정)
 POSITION sample_obj_next_position(void) {
 	// 현재 위치와 목적지를 비교해서 이동 방향 결정	
 	POSITION diff = psub(obj.dest, obj.pos);
@@ -433,155 +475,121 @@ POSITION sample_obj_next_position(void) {
 		return obj.pos;  // 제자리
 	}
 }
+
 // 우측 하단 샌드웜 이동
-
 POSITION sandworm_obj_next_position(void) {
-	// 현재 위치와 목적지를 비교해서 이동 방향 결정	
-	POSITION diff = psub(sandworm.dest, sandworm.pos);
-	DIRECTION dir;
+	POSITION nearest_unit = near_unit(sandworm.pos);  // 가장 가까운 유닛 찾기
 
-	// 목적지 도착. 지금은 단순히 원래 자리로 왕복
-	if (diff.row == 0 && diff.column == 0) {
-		if (sandworm.dest.row == MAP_HEIGHT - 7 && sandworm.dest.column == (MAP_WIDTH + 36) - MAP_WIDTH) {
-			// topleft --> bottomright로 목적지 설정
-			POSITION new_dest = { 1, 1 };
-			sandworm.dest = new_dest;
-		}
-		else {
-			// bottomright --> topleft로 목적지 설정
-			POSITION new_dest = { MAP_HEIGHT - 7, (MAP_WIDTH + 36) - MAP_WIDTH };
-			sandworm.dest = new_dest;
-		}
+	if (nearest_unit.row == -1 && nearest_unit.column == -1) {
+		sandworm.adjacent_to_unit = 0;  // 인접 상태 초기화
 		return sandworm.pos;
 	}
 
-	// 가로축, 세로축 거리를 비교해서 더 먼 쪽 축으로 이동
+	if (abs(sandworm.pos.row - nearest_unit.row) + abs(sandworm.pos.column - nearest_unit.column) == 1) {
+		if (sandworm.adjacent_to_unit == 1) {
+			if (nearest_unit.row >= 0 && nearest_unit.row < MAP_HEIGHT &&
+				nearest_unit.column >= 0 && nearest_unit.column < MAP_WIDTH) {
+				map[1][nearest_unit.row][nearest_unit.column] = ' ';  // 유닛 제거 (빈 공간으로 설정)
+				sandworm.pos = nearest_unit;  // 샌드웜의 위치를 유닛 위치로 변경
+				sandworm.adjacent_to_unit = 0;  // 인접 상태 초기화
+				system_message("샌드웜이 유닛을 먹었습니다!");  // 시스템 메시지
+				return sandworm.pos;
+			}
+		}
+		else {
+			sandworm.adjacent_to_unit = 1;
+			return sandworm.pos;  // 현재 위치 유지
+		}
+	}
+
+	sandworm.adjacent_to_unit = 0;
+
+	sandworm.dest = nearest_unit;
+
+	POSITION diff = psub(sandworm.dest, sandworm.pos);
+
+	DIRECTION dirs[2];
 	if (abs(diff.row) >= abs(diff.column)) {
-		dir = (diff.row >= 0) ? d_down : d_up;
+		dirs[0] = (diff.row > 0) ? d_down : d_up;
+		dirs[1] = (diff.column > 0) ? d_right : d_left;
 	}
 	else {
-		dir = (diff.column >= 0) ? d_right : d_left;
+		dirs[0] = (diff.column > 0) ? d_right : d_left;
+		dirs[1] = (diff.row > 0) ? d_down : d_up;
 	}
 
-	// validation check
-	// next_pos가 맵을 벗어나지 않고, (지금은 없지만)장애물에 부딪히지 않으면 다음 위치로 이동
-	// 지금은 충돌 시 아무것도 안 하는데, 나중에는 장애물을 피해가거나 적과 전투를 하거나... 등등
-	POSITION next_pos = pmove(sandworm.pos, dir);
-	if (1 <= next_pos.row && next_pos.row <= MAP_HEIGHT - 2 && \
-		1 <= next_pos.column && next_pos.column <= MAP_WIDTH - 2 && \
-		map[1][next_pos.row][next_pos.column] < 0) {
+	for (int i = 0; i < 2; i++) {
+		POSITION next_pos = pmove(sandworm.pos, dirs[i]);
 
-		return next_pos;
+		if (1 <= next_pos.row && next_pos.row <= MAP_HEIGHT - 2 &&
+			1 <= next_pos.column && next_pos.column <= MAP_WIDTH - 2 &&
+			map[1][next_pos.row][next_pos.column] < 0) {
+			if (map[1][next_pos.row][next_pos.column] != 'R' &&
+				map[1][next_pos.row][next_pos.column] != 'P') {
+				return next_pos;
+			}
+		}
 	}
-	else {
-		return sandworm.pos;  // 제자리
-	}
+
+	return sandworm.pos;  // 유효한 이동 경로가 없으면 제자리 유지
 }
-
-//POSITION sandworm_obj_next_position(OBJECT_SAMPLE units[], int unit_count) {
-//	// 가장 가까운 유닛 탐색
-//	POSITION closest_unit_pos = { -1, -1 };  // 가장 가까운 유닛의 위치
-//	int min_distance = MAP_WIDTH + MAP_HEIGHT;  // 최소 거리 초기화 (최대 맵 크기)
-//
-//	for (int i = 0; i < unit_count; i++) {
-//		OBJECT_SAMPLE unit = units[i];
-//
-//		// 레이어가 1인 유닛만 탐색
-//		if (unit.layer != 1) continue;
-//
-//		// 거리 계산 (맨해튼 거리)
-//		int distance = abs(sandworm.pos.row - unit.pos.row) +
-//			abs(sandworm.pos.column - unit.pos.column);
-//
-//		// 최소 거리 갱신
-//		if (distance < min_distance) {
-//			min_distance = distance;
-//			closest_unit_pos = unit.pos;
-//		}
-//	}
-//
-//	// 가장 가까운 유닛이 없는 경우
-//	if (closest_unit_pos.row == -1 && closest_unit_pos.column == -1) {
-//		return sandworm.pos;  // 이동하지 않음
-//	}
-//
-//	// 새로운 목적지 설정
-//	sandworm.dest = closest_unit_pos;
-//
-//	// 현재 위치와 목적지 비교
-//	POSITION diff = psub(sandworm.dest, sandworm.pos);
-//	DIRECTION dir;
-//
-//	// 목적지 도착
-//	if (diff.row == 0 && diff.column == 0) {
-//		return sandworm.pos;  // 도착했으므로 대기
-//	}
-//
-//	// 이동 방향 결정 (가로/세로 거리 비교)
-//	if (abs(diff.row) >= abs(diff.column)) {
-//		dir = (diff.row >= 0) ? d_down : d_up;
-//	}
-//	else {
-//		dir = (diff.column >= 0) ? d_right : d_left;
-//	}
-//
-//	// 다음 위치 계산
-//	POSITION next_pos = pmove(sandworm.pos, dir);
-//
-//	// 충돌 검사 및 맵 유효성 확인
-//	if (1 <= next_pos.row && next_pos.row <= MAP_HEIGHT - 2 &&
-//		1 <= next_pos.column && next_pos.column <= MAP_WIDTH - 2 &&
-//		map[1][next_pos.row][next_pos.column] < 0) {
-//
-//		return next_pos;  // 이동
-//	}
-//	else {
-//		return sandworm.pos;  // 충돌 시 이동하지 않음
-//	}
-//}
 
 // 좌측 상단 샌드웜 이동
 POSITION sandworm1_obj_next_position(void) {
-	// 현재 위치와 목적지를 비교해서 이동 방향 결정	
-	POSITION diff = psub(sandworm1.dest, sandworm1.pos);
-	DIRECTION dir;
+	POSITION nearest_unit = near_unit(sandworm1.pos);  // 가장 가까운 유닛 찾기
 
-	// 목적지 도착. 지금은 단순히 원래 자리로 왕복
-	if (diff.row == 0 && diff.column == 0) {
-		if (sandworm1.dest.row == MAP_HEIGHT - (MAP_HEIGHT - 3) && sandworm1.dest.column == MAP_WIDTH - (MAP_WIDTH - 10)) {
-			// topleft --> bottomright로 목적지 설정
-			POSITION new_dest = { MAP_HEIGHT - 2, MAP_WIDTH - 2 };
-			sandworm1.dest = new_dest;
-		}
-		else {
-			// bottomright --> topleft로 목적지 설정
-			POSITION new_dest = { MAP_HEIGHT - (MAP_HEIGHT - 3), MAP_WIDTH - (MAP_WIDTH - 10) };
-			sandworm1.dest = new_dest;
-		}
+	if (nearest_unit.row == -1 && nearest_unit.column == -1) {
+		sandworm1.adjacent_to_unit = 0;  // 인접 상태 초기화
 		return sandworm1.pos;
 	}
 
-	// 가로축, 세로축 거리를 비교해서 더 먼 쪽 축으로 이동
+	if (abs(sandworm1.pos.row - nearest_unit.row) + abs(sandworm1.pos.column - nearest_unit.column) == 1) {
+		if (sandworm1.adjacent_to_unit == 1) {
+			if (nearest_unit.row >= 0 && nearest_unit.row < MAP_HEIGHT &&
+				nearest_unit.column >= 0 && nearest_unit.column < MAP_WIDTH) {
+				map[1][nearest_unit.row][nearest_unit.column] = ' ';  // 유닛 제거 (빈 공간으로 설정)
+				sandworm1.pos = nearest_unit;  // 샌드웜1의 위치를 유닛 위치로 변경
+				sandworm1.adjacent_to_unit = 0;  // 인접 상태 초기화
+				system_message("샌드웜이 유닛을 먹었습니다!");  // 시스템 메시지
+				return sandworm1.pos;
+			}
+		}
+		else {
+			sandworm1.adjacent_to_unit = 1;
+			return sandworm1.pos;  // 현재 위치 유지
+		}
+	}
+
+	sandworm1.adjacent_to_unit = 0;
+
+	sandworm1.dest = nearest_unit;
+
+	POSITION diff = psub(sandworm1.dest, sandworm1.pos);
+
+	DIRECTION dirs[2];
 	if (abs(diff.row) >= abs(diff.column)) {
-		dir = (diff.row >= 0) ? d_down : d_up;
+		dirs[0] = (diff.row > 0) ? d_down : d_up;
+		dirs[1] = (diff.column > 0) ? d_right : d_left;
 	}
 	else {
-		dir = (diff.column >= 0) ? d_right : d_left;
+		dirs[0] = (diff.column > 0) ? d_right : d_left;
+		dirs[1] = (diff.row > 0) ? d_down : d_up;
 	}
 
-	// validation check
-	// next_pos가 맵을 벗어나지 않고, (지금은 없지만)장애물에 부딪히지 않으면 다음 위치로 이동
-	// 지금은 충돌 시 아무것도 안 하는데, 나중에는 장애물을 피해가거나 적과 전투를 하거나... 등등
-	POSITION next_pos = pmove(sandworm1.pos, dir);
-	if (1 <= next_pos.row && next_pos.row <= MAP_HEIGHT - 2 && \
-		1 <= next_pos.column && next_pos.column <= MAP_WIDTH - 2 && \
-		map[1][next_pos.row][next_pos.column] < 0) {
+	for (int i = 0; i < 2; i++) {
+		POSITION next_pos = pmove(sandworm1.pos, dirs[i]);
 
-		return next_pos;
+		if (1 <= next_pos.row && next_pos.row <= MAP_HEIGHT - 2 &&
+			1 <= next_pos.column && next_pos.column <= MAP_WIDTH - 2 &&
+			map[1][next_pos.row][next_pos.column] < 0) {
+			if (map[1][next_pos.row][next_pos.column] != 'R' &&
+				map[1][next_pos.row][next_pos.column] != 'P') {
+				return next_pos;
+			}
+		}
 	}
-	else {
-		return sandworm1.pos;  // 제자리
-	}
+
+	return sandworm1.pos;  // 유효한 이동 경로가 없으면 제자리 유지
 }
 
 void sample_obj_move(void) {
@@ -599,47 +607,60 @@ void sample_obj_move(void) {
 }
 
 void sandworm_obj_move(int sandworm_make_spice1) {
-	POSITION prev;
-
-	sandworm_make_spice1 = rand() % 100 + 1;  // 1 ~ 100까지 랜덤한 수 뽑기
+	POSITION prev = sandworm.pos;  // 현재 위치 저장
 
 	if (sys_clock <= sandworm.next_move_time) {
-		// 아직 시간이 안 됐음
+		// 아직 시간이 안 됨
 		return;
 	}
-	
-	// 오브젝트(건물, 유닛 등)은 layer1(map[1])에 저장
+
+	// 현재 위치를 비움
 	map[1][sandworm.pos.row][sandworm.pos.column] = -1;
-	prev = sandworm.pos;
+
+	// 다음 위치 계산
 	sandworm.pos = sandworm_obj_next_position();
+
+	// 다음 위치로 이동
 	map[1][sandworm.pos.row][sandworm.pos.column] = sandworm.sandworm_repr;
-	// 5% 확률로 스파이스 매장지 생성
-	if (sandworm_make_spice1 <= 5) {
-		map[1][prev.row][prev.column] = '3';
-		system_message("샌드웜이 스파이스를 생성했습니다.");
+
+	// 이동했을 경우만 스파이스 생성 (이전 위치와 현재 위치가 다를 때)
+	if (prev.row != sandworm.pos.row || prev.column != sandworm.pos.column) {
+		sandworm_make_spice1 = rand() % 100 + 1;  // 1 ~ 100
+		if (sandworm_make_spice1 <= 5) {  // 5% 확률로 스파이스 생성
+			int spice_ran = rand() % 5 + 3;  // '3' ~ '7'
+			map[1][prev.row][prev.column] = '0' + spice_ran;
+			system_message("샌드웜이 스파이스를 생성했습니다.");
+		}
 	}
 
 	sandworm.next_move_time = sys_clock + sandworm.move_period;
 }
 
 void sandworm1_obj_move(int sandworm_make_spice2) {
-	POSITION prev;
-	sandworm_make_spice2 = rand() % 100 + 1; // 1 ~ 100까지 랜덤한 수 뽑기
+	POSITION prev = sandworm1.pos;  // 현재 위치 저장
 
 	if (sys_clock <= sandworm1.next_move_time) {
-		// 아직 시간이 안 됐음
+		// 아직 시간이 안 됨
 		return;
 	}
 
-	// 오브젝트(건물, 유닛 등)은 layer1(map[1])에 저장
+	// 현재 위치를 비움
 	map[1][sandworm1.pos.row][sandworm1.pos.column] = -1;
-	prev = sandworm1.pos;
+
+	// 다음 위치 계산
 	sandworm1.pos = sandworm1_obj_next_position();
+
+	// 다음 위치로 이동
 	map[1][sandworm1.pos.row][sandworm1.pos.column] = sandworm1.sandworm_repr;
-	// 5% 확률로 스파이스 매장지 생성
-	if (sandworm_make_spice2 <= 5) {
-		map[1][prev.row][prev.column] = '3';
-		system_message("샌드웜이 스파이스를 생성했습니다.");
+
+	// 이동했을 경우만 스파이스 생성 (이전 위치와 현재 위치가 다를 때)
+	if (prev.row != sandworm1.pos.row || prev.column != sandworm1.pos.column) {
+		sandworm_make_spice2 = rand() % 100 + 1;  // 1 ~ 100
+		if (sandworm_make_spice2 <= 5) {  // 5% 확률로 스파이스 생성
+			int spice_ran = rand() % 5 + 3;  // '3' ~ '7'
+			map[1][prev.row][prev.column] = '0' + spice_ran;
+			system_message("샌드웜이 스파이스를 생성했습니다.");
+		}
 	}
 
 	sandworm1.next_move_time = sys_clock + sandworm1.move_period;
@@ -657,8 +678,8 @@ void clear_messages(void) {
 			printf(" ");
 		}
 	}
-	for (int i = 3; i < CONSOL_HEIGHT - 1; i++) {
-		for (int j = 4; j < CONSOL_WIDTH - 2; j++) {
+	for (int i = 3; i < CONSOL_HEIGHT + 1; i++) {
+		for (int j = 4; j < CONSOL_WIDTH + 1; j++) {
 			pos.row = MAP_HEIGHT + i;
 			pos.column = MAP_WIDTH + j;
 			gotoxy(pos);
@@ -667,7 +688,7 @@ void clear_messages(void) {
 	}
 }
 
-/*================= 입력 문자 확인 =============================*/
+/*================= 입력 문자 확인 ====================*/
 // 커서에 위치해있는 문자 인식
 char check_cursor_position(void) {
 	int row = cursor.current.row;
@@ -681,16 +702,18 @@ char check_cursor_position(void) {
 // 스페이스바를 눌렀을때
 void space_prass(void) {
 	char current_char = check_cursor_position();
-	//아군 베이스를 인식했을때(아군 적군 구별하는 방법 추가요함)
+	//아군 베이스를 인식했을때
 	if (current_char == 'B') {
 		clear_messages();
 		ally_base_info();
 		command_ally_base();
+		system_message("베이스를 선택했습니다.");
 	}
 	else if (current_char == 'H') {
 		clear_messages();
 		ally_harvester_info();
 		command_ally_harvester();
+		system_message("하베스터를 선택했습니다.");
 	}
 	else if (current_char == 'R') {
 		clear_messages();
@@ -700,7 +723,8 @@ void space_prass(void) {
 		clear_messages();
 		sandworm_info();
 	}
-	else if (current_char == '5' || current_char == '3') {
+	else if (current_char == '3' || current_char == '4' || current_char == '5' ||
+		current_char == '6' || current_char == '7') {
 		clear_messages();
 		spice_info();
 	}
@@ -715,6 +739,9 @@ void space_prass(void) {
 }
 // ESC를 눌렀을때
 void ESC_prass(void) {
+	cursor.size = 1;
+	display_map();
+	system_message("선택을 취소합니다.");
 	POSITION pos;
 	for (int i = 2; i < STATUS_HEIGHT - 1; i++) {
 		for (int j = 4; j < STATUS_WIDTH - 2; j++) {
@@ -724,8 +751,8 @@ void ESC_prass(void) {
 			printf(" ");
 		}
 	}
-	for (int i = 3; i < CONSOL_HEIGHT - 1; i++) {
-		for (int j = 4; j < CONSOL_WIDTH - 2; j++) {
+	for (int i = 3; i < CONSOL_HEIGHT + 1; i++) {
+		for (int j = 3; j < CONSOL_WIDTH + 1; j++) {
 			pos.row = MAP_HEIGHT + i;
 			pos.column = MAP_WIDTH + j;
 			gotoxy(pos);
@@ -734,8 +761,25 @@ void ESC_prass(void) {
 	}
 	normally_command();
 }
+// 사막 위에 건물 짓기위해 B 눌렀을때
+void B_prass(RESOURCE* resource, CURSOR* cursor) {
+	clear_messages();
+	char current_char = check_cursor_position();
+	if (current_char == ' ') { // 커서가 사막(건물X)에 위치해있을때
+		command_can_build(); // 사막 위 건설 가능한 건물 출력
+		unsigned char k;
+		k = _getch(); // 키 입력 대기
+		if (k == 'b' || k == 'B') { // 병영 건설
+			cursor->size = 2; //커서 크기를 2X2로 변경
+			// 커서 위치가 장판 위에 있고, 자원이 4 이상일때만 건설
+			if (current_char == 'P' && resource->spice >= 4) {
 
-/*===========유닛, 오브젝트, 건물 정보 출력===========*/
+			}
+		}
+	}
+}
+
+/*==========유닛, 오브젝트, 건물 정보 출력===========*/
 void ally_base_info(void){
 	POSITION pos;
 	pos.row = 2;
@@ -873,12 +917,33 @@ void command_ally_harvester(void) {
 	gotoxy(pos);
 	printf("H: Harvest, M: Move");
 }
+void command_can_build(void){
+	POSITION pos;
+	pos.row = MAP_HEIGHT + 2;
+	pos.column = MAP_WIDTH + 4;
+	pos.row += 1;
+	gotoxy(pos);
+	printf("건설 가능한 건물 목록 : ");
+	pos.row += 1;
+	gotoxy(pos);
+	printf("\n");
+	pos.row += 1;
+	gotoxy(pos);
+	printf("P: 장판 건설	G: 창고 건설	S: 은신처 건설");
+	pos.row += 1;
+	gotoxy(pos);
+	printf("\n");
+	pos.row += 1;
+	gotoxy(pos);
+	printf("D: 숙소 건설	B: 병영 건설");
+	
+}
 
 /*=========상태창 정보 출력==========*/
 const char* many_massage[ALL_MESSAGE];
 const char* backbuf_massage = NULL;
 
-// 상태 메세지를 제일 아래에 출력함.
+/*=======상태메세지 출력========*/
 void system_message(const char* mes) {
 	POSITION pos;
 	

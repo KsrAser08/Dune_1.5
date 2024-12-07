@@ -28,6 +28,7 @@
 #define MAX_UNIT 100  // 최대 유닛 수 정의
 
 
+
 /* ================= 위치와 방향 =================== */
 // 맵에서 위치를 나타내는 구조체
 typedef struct {
@@ -37,7 +38,8 @@ typedef struct {
 // 커서 위치
 typedef struct {
 	POSITION previous;  // 직전 위치
-	POSITION current;   // 현재 위치
+	POSITION current;  // 현재 위치
+	int size; // 커서 크기
 } CURSOR;
 
 // 입력 가능한 키 종류.
@@ -48,8 +50,9 @@ typedef enum {
 	k_quit,
 	k_undef, // 정의되지 않은 키 입력	
 	k_space, //스페이스바 입력
-	k_H, k_h, //H입력
-	k_esc, //ESC입력
+	k_H, k_h, // H입력
+	k_esc, // ESC입력
+	k_b, k_B // B입력
 } KEY;
 
 
@@ -77,6 +80,7 @@ inline POSITION psub(POSITION p1, POSITION p2) {
 	POSITION p = { p1.row - p2.row, p1.column - p2.column };
 	return p;
 }
+
 
 // 방향키인지 확인하는 함수
 #define is_arrow_key(k)		(k_up <= (k) && (k) <= k_down)
@@ -119,7 +123,6 @@ typedef struct {
 	char repr; //화면에 표시할 문자 - 건물 이름
 	int layer; //어느 레이어인지 표시
 	int formation; //아군, 적군중 어디인지 확인하기 위함 / 1 = 아군, 2 = 적군
-	int units[];
 }OBJECT_BUILDING;
 
 //샌드웜 관련
@@ -127,7 +130,9 @@ typedef struct {
 	POSITION pos;		// 현재 위치(position)
 	POSITION dest;		// 목적지(destination)
 	char sandworm_repr;	// 화면에 표시할 문자(representation)
+	int adjacent_to_unit; // 유닛과 인접한 상태인지 여부 (0: 아님, 1: 맞음)
 	int move_period;	// '몇 ms마다 한 칸 움직이는지'를 뜻함
 	int next_move_time;	// 다음에 움직일 시간
 }SANDWORM;
+
 #endif
