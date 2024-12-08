@@ -135,4 +135,14 @@ typedef struct {
 	int next_move_time;	// 다음에 움직일 시간
 }SANDWORM;
 
+typedef struct {
+	int plate;
+	int dormitory;
+	int garage;
+	int barracks;
+	int shelter;
+}BUILDING;
+
+
+
 #endif

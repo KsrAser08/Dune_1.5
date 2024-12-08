@@ -159,15 +159,34 @@ void display_map(char map[N_LAYER][MAP_HEIGHT][MAP_WIDTH]) {
 				}
 				//자원 스파이스 색
 				else if (backbuf[i][j] == '3' || backbuf[i][j] == '4' || backbuf[i][j] == '5' \
-					|| backbuf[i][j] == '6' || backbuf[i][j] == '7') 
-				{
+					|| backbuf[i][j] == '6' || backbuf[i][j] == '7') {
 					POSITION pos = { i, j };
-					printc(padd(map_pos, pos), backbuf[i][j], COLOR_DEFAULT + 48);
+					printc(padd(map_pos, pos), backbuf[i][j], COLOR_DEFAULT + 192);
 				}
 				//중립 샌드웜 색
 				else if (backbuf[i][j] == 'W') {
 					POSITION pos = { i, j };
 					printc(padd(map_pos, pos), backbuf[i][j], COLOR_DEFAULT + 96);
+				}
+				// 병영 색
+				else if (backbuf[i][j] == 'b') {
+					POSITION pos = { i, j };
+					printc(padd(map_pos, pos), backbuf[i][j], COLOR_DEFAULT + 32);
+				}
+				// 은신처 색
+				else if (backbuf[i][j] == 'S') {
+					POSITION pos = { i, j };
+					printc(padd(map_pos, pos), backbuf[i][j], COLOR_DEFAULT + 225);
+				}
+				// 숙소 색
+				else if (backbuf[i][j] == 'D') {
+					POSITION pos = { i, j };
+					printc(padd(map_pos, pos), backbuf[i][j], COLOR_DEFAULT + 48);
+				}
+				// 창고 색
+				else if (backbuf[i][j] == 'G') {
+					POSITION pos = { i, j };
+					printc(padd(map_pos, pos), backbuf[i][j], COLOR_DEFAULT + 80);
 				}
 				else {
 					POSITION pos = { i, j };
@@ -255,10 +274,22 @@ void display_cursor(CURSOR cursor) {
 				printc(padd(map_pos, restore_pos), ch, COLOR_DEFAULT + 128);  // 바위
 			}
 			else if (ch == '3' || ch == '4' || ch == '5' || ch == '6' || ch == '7') {  // 스파이스 색 복원
-				printc(padd(map_pos, restore_pos), ch, COLOR_DEFAULT + 48);  // 스파이스 색 복원
+				printc(padd(map_pos, restore_pos), ch, COLOR_DEFAULT + 192);  // 스파이스 색 복원
 			}
 			else if (ch == 'W') {  // 샌드웜 색 복원
 				printc(padd(map_pos, restore_pos), ch, COLOR_DEFAULT + 96);  // 샌드웜 색 복원
+			}
+			else if (ch == 'b') {  // 병영 색 복원
+				printc(padd(map_pos, restore_pos), ch, COLOR_DEFAULT + 32);  // 병영 색 복원
+			}
+			else if (ch == 'D') {  // 숙소 색 복원
+				printc(padd(map_pos, restore_pos), ch, COLOR_DEFAULT + 48);  // 숙소 색 복원
+			}
+			else if (ch == 'G') {  // 창고 색 복원
+				printc(padd(map_pos, restore_pos), ch, COLOR_DEFAULT + 80);  // 창고 색 복원
+			}
+			else if (ch == 'S') {  // 창고 색 복원
+				printc(padd(map_pos, restore_pos), ch, COLOR_DEFAULT + 225);  // 은신처 색 복원
 			}
 			else {
 				printc(padd(map_pos, restore_pos), ch, COLOR_DEFAULT);  // 기본 복원

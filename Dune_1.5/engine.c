@@ -5,14 +5,6 @@
 #include "io.h"
 #include "display.h"
 
-/*====현재까지 구현한 내용====
-1. 준비 - (구현완료)
-2. 커서 & 상태창 - 방향키 더블클릭, 선택, 취소 (구현완료)
-3. 중립 유닛 - 샌드웜 두마리 모두 움직이며 확률적(5%)으로 스파이스 생성 구현 완료(움직이지만 o 유닛처럼 제자리로 돌아감.) // 실행 계속 해보며 밸런스(스파이스 매장량, 샌드웜 스파이스 생성 확률) 조정 예정!
-4. 유닛 생산 - H(하베스터)를 B베이스 위에서 명령어 h를 누를 경우에 본진 위에 생성됨 / esc를 누르면 명령창과 상태창이 없어지며 취소됨 / 스페이스바를 누른 뒤 다른키를 누르면 현 상태를 유지함 (구현 완료)
-5. 시스템 메세지 - 새로운 메세지는 맨 아래에 과거에 출력된 메세지는 한칸씩 위로가게 출력함 (구현완료)
-*/
-
 // 함수 정렬
 void init(void);
 void game_map(void);
@@ -35,6 +27,7 @@ void space_prass(void);
 void ESC_prass(void);
 void B_prass(RESOURCE* resource, CURSOR* cursor);
 
+
 char check_cursor_position(void); // 현재 커서에 있는 문자를 인식
 void ally_base_info(void); // 아군 베이스 현재 정보
 void ally_harvester_info(void); // 아군 하베스터 현재 정보
@@ -49,14 +42,17 @@ void normally_command(void);
 void command_ally_base(void);
 void command_ally_harvester(void);
 void command_can_build(void);
-
+/*=========생산 & 건설=========*/
 void create_harvester(RESOURCE *resource);
-
+bool is_cursor_all_on_P(POSITION current_pos, CURSOR* cursor, char map[N_LAYER][MAP_HEIGHT][MAP_WIDTH]);
+bool is_cursor_all_on_sand(POSITION current_pos, CURSOR* cursor, char map[N_LAYER][MAP_HEIGHT][MAP_WIDTH]);
+/*=========시스템 메세지 출력=========*/
 void system_message(const char* mes);
 
 /* ================= control =================== */
 int sys_clock = 0;		// system-wide clock(ms)
 int cursor_clock = 0;
+int build = 0;
 
 CURSOR cursor = { {1, 1}, {1, 1}, .size = 1 };
 /* ================= game data =================== */
@@ -67,7 +63,7 @@ char consol_map[CONSOL_HEIGHT][CONSOL_WIDTH] = { 0 };
 
 //자원 정보
 RESOURCE resource = {  
-.spice = 0,
+.spice = 5,
 .spice_max = 30,
 .population = 0,
 .population_max = 10
@@ -190,6 +186,14 @@ OBJECT_BUILDING obj_sandworm = {
 .A = {MAP_HEIGHT - (MAP_HEIGHT - 3), MAP_WIDTH - (MAP_WIDTH - 10)},
 .B = {MAP_HEIGHT - 7, (MAP_WIDTH + 36) - MAP_WIDTH}
 };
+//건물 선택
+BUILDING building = {
+	.barracks = 0,
+	.dormitory = 0,
+	.garage = 0,
+	.plate = 0,
+	.shelter = 0
+};
 
 /* ================= main() =================== */
 int main(void) {
@@ -230,7 +234,101 @@ int main(void) {
 			// 방향키 외의 입력
 			switch (key) {
 			case k_quit: outro(); break;
-			case k_space: space_prass(); break;
+			case k_space: {
+				if (cursor.size == 1) space_prass(); // 커서의 크기가 1일때만 정보출력
+				else if (cursor.size == 2) { // 커서의 크기가 2일때만 건설조건 확인
+					if (is_cursor_all_on_P(cursor.current, &cursor, map)) { //모두 P위에 있어, 'True'를 반환받기
+						// 병영
+						if (building.barracks == 1 && resource.spice >= 4) { // B-B선택(병영건설)
+							POSITION curr = cursor.current;
+							int size = cursor.size;
+							for (int i = 0; i < size; i++) {
+								for (int j = 0; j < size; j++) {
+									POSITION build_pos = { curr.row + i, curr.column + j };
+									map[0][build_pos.row][build_pos.column] = 'b';  // 병영 출력
+								}
+							}
+							cursor.size = 1;
+							resource.spice -= 4;
+							clear_messages();
+							normally_command();
+							system_message("성공적으로 병영이 건설되었습니다.");
+						}
+						// 은신처
+						else if (building.shelter == 1 && resource.spice >= 5) {
+							POSITION curr = cursor.current;
+							int size = cursor.size;
+							for (int i = 0; i < size; i++) {
+								for (int j = 0; j < size; j++) {
+									POSITION build_pos = { curr.row + i, curr.column + j };
+									map[0][build_pos.row][build_pos.column] = 'S';  // 병영 출력
+								}
+							}
+							cursor.size = 1;
+							resource.spice -= 5;
+							clear_messages();
+							normally_command();
+							system_message("성공적으로 은신처가 건설되었습니다.");
+						}
+						// 숙소
+						else if (building.dormitory == 1 && resource.spice >= 2) {
+							POSITION curr = cursor.current;
+							int size = cursor.size;
+							for (int i = 0; i < size; i++) {
+								for (int j = 0; j < size; j++) {
+									POSITION build_pos = { curr.row + i, curr.column + j };
+									map[0][build_pos.row][build_pos.column] = 'D';  // 병영 출력
+								}
+							}
+							cursor.size = 1;
+							resource.spice -= 2;
+							resource.population_max += 10;
+							clear_messages();
+							normally_command();
+							system_message("성공적으로 숙소가 건설되었습니다.");
+						}
+						// 창고
+						else if (building.garage == 1 && resource.spice >= 4) {
+							POSITION curr = cursor.current;
+							int size = cursor.size;
+							for (int i = 0; i < size; i++) {
+								for (int j = 0; j < size; j++) {
+									POSITION build_pos = { curr.row + i, curr.column + j };
+									map[0][build_pos.row][build_pos.column] = 'G';  // 창고 출력
+								}
+							}
+							cursor.size = 1;
+							resource.spice -= 4;
+							resource.spice_max += 10;
+							clear_messages();
+							normally_command();
+							system_message("성공적으로 창고가 건설되었습니다.");
+						}
+
+						else system_message("자원이 부족합니다.");
+					}
+					else if (is_cursor_all_on_sand(cursor.current, &cursor, map)) {
+						// 장판
+						if (building.plate == 1 && resource.spice >= 1) { // 장판 P
+							POSITION curr = cursor.current;
+							int size = cursor.size;
+							for (int i = 0; i < size; i++) {
+								for (int j = 0; j < size; j++) {
+									POSITION build_pos = { curr.row + i, curr.column + j };
+									map[0][build_pos.row][build_pos.column] = 'P';  // 장판 출력
+								}
+							}
+							cursor.size = 1;
+							resource.spice -= 1;
+							clear_messages();
+							normally_command();
+							system_message("성공적으로 장판이 건설되었습니다.");
+						}
+					}
+					else system_message("위치가 올바르지 않습니다.");
+				}
+				break;
+			}
 			case k_esc:	ESC_prass(); break;
 			case k_h: create_harvester(&resource); break;
 			case k_H: create_harvester(&resource); break;
@@ -732,10 +830,11 @@ void space_prass(void) {
 		clear_messages();
 		plate_info();
 	}
-	else if (current_char == ' ') {
+	/*else if (current_char == ' ') {
 		clear_messages();
 		desert_info();
 	}
+	*/
 }
 // ESC를 눌렀을때
 void ESC_prass(void) {
@@ -769,13 +868,37 @@ void B_prass(RESOURCE* resource, CURSOR* cursor) {
 		command_can_build(); // 사막 위 건설 가능한 건물 출력
 		unsigned char k;
 		k = _getch(); // 키 입력 대기
-		if (k == 'b' || k == 'B') { // 병영 건설
+		// 장판 건설
+		if (k == 'p' || k == 'P') {
 			cursor->size = 2; //커서 크기를 2X2로 변경
-			// 커서 위치가 장판 위에 있고, 자원이 4 이상일때만 건설
-			if (current_char == 'P' && resource->spice >= 4) {
-
-			}
+			building.plate = 1;
+			system_message("건물을 건설할 위치로 이동 후 스페이스바 입력");
+	}
+		// 병영 건설
+		else if (k == 'b' || k == 'B') { 
+			cursor->size = 2; //커서 크기를 2X2로 변경
+			building.barracks = 1;
+			system_message("건물을 건설할 위치로 이동 후 스페이스바 입력 (취소: ESC)");
 		}
+		// 은신처 건설
+		else if (k == 's' || k == 'S') {
+			cursor->size = 2; //커서 크기를 2X2로 변경
+			building.shelter = 1;
+			system_message("건물을 건설할 위치로 이동 후 스페이스바 입력 (취소: ESC)");
+		}
+		// 숙소 건설
+		else if (k == 'd' || k == 'D') { 
+			cursor->size = 2; //커서 크기를 2X2로 변경
+			building.dormitory = 1;
+			system_message("건물을 건설할 위치로 이동 후 스페이스바 입력 (취소: ESC)");
+		}
+		// 창고 건설
+		else if (k == 'g' || k == 'G') {
+			cursor->size = 2; //커서 크기를 2X2로 변경
+			building.garage = 1;
+			system_message("건물을 건설할 위치로 이동 후 스페이스바 입력 (취소: ESC)");
+		}
+
 	}
 }
 
@@ -984,7 +1107,8 @@ void system_message(const char* mes) {
 
 }
 
-/*===========하베스터 생산===========*/
+/*===========생산 & 건설===========*/
+// 하베스터 생산
 void create_harvester(RESOURCE *resource) {
 	POSITION pos;
 	char current_char = check_cursor_position();
@@ -1003,3 +1127,31 @@ void create_harvester(RESOURCE *resource) {
 		}
 	}
 }
+// 2X2 커서가 모두 P위에 있는지 검사하는 함수
+bool is_cursor_all_on_P(POSITION current_pos, CURSOR* cursor, char map[N_LAYER][MAP_HEIGHT][MAP_WIDTH]) {
+	for (int i = 0; i < cursor->size; i++) {
+		for (int j = 0; j < cursor->size; j++) {
+			POSITION check_pos = { current_pos.row + i, current_pos.column + j };
+			// 해당 위치가 'P'인지 확인
+			if (map[0][check_pos.row][check_pos.column] != 'P') {
+				return false;  // 'P'가 아닌 곳이 있으면 실패
+			}
+		}
+	}
+	return true;  // 커서의 4면 모두 'P' 위에 있으면 성공
+}
+// 2x2커서가 모두 사막위에 있는지 검사하는 함수 (장판전용)
+bool is_cursor_all_on_sand(POSITION current_pos, CURSOR * cursor, char map[N_LAYER][MAP_HEIGHT][MAP_WIDTH]) {
+	for (int i = 0; i < cursor->size; i++) {
+		for (int j = 0; j < cursor->size; j++) {
+			POSITION check_pos = { current_pos.row + i, current_pos.column + j };
+			// 해당 위치가 'P'인지 확인
+			if (map[0][check_pos.row][check_pos.column] != ' ') {
+				return false;  // 'P'가 아닌 곳이 있으면 실패
+			}
+		}
+	}
+	return true;  // 커서의 4면 모두 'P' 위에 있으면 성공
+}
+
+
