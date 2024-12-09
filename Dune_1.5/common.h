@@ -135,6 +135,19 @@ typedef struct {
 	int next_move_time;	// 다음에 움직일 시간
 }SANDWORM;
 
+//하베스터 관련
+typedef struct {
+	POSITION pos;		// 현재 위치(position)
+	POSITION dest;		// 목적지(destination)
+	char sandworm_repr;	// 화면에 표시할 문자(representation)
+	int adjacent_to_unit; // 유닛과 인접한 상태인지 여부 (0: 아님, 1: 맞음)
+	int move_period;	// '몇 ms마다 한 칸 움직이는지'를 뜻함
+	int next_move_time;	// 다음에 움직일 시간
+
+	int on_click_space; // 스페이스바를 눌러 생산 직전 화면에 진입했는가?
+	int on_click_H; // H를 눌러 하베스터를 선택했는가에 대한 여부 판단 
+}HARVESTER;
+
 typedef struct {
 	int plate;
 	int dormitory;

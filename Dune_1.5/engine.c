@@ -72,7 +72,7 @@ RESOURCE resource = {
 OBJECT_SAMPLE obj = {
 .pos = {1, 1},
 .dest = {MAP_HEIGHT - 2, MAP_WIDTH - 2},
-.repr = 'o',
+.repr = 'E',
 .move_period = 300,
 .next_move_time = 300
 };
@@ -91,6 +91,10 @@ SANDWORM sandworm = {
 .sandworm_repr = 'W',
 .move_period = 1400,
 .next_move_time = 1400
+};
+
+HARVESTER harvester = {
+	.on_click_space = 0
 };
 
 //아군 베이스 설정 'B'
@@ -186,13 +190,14 @@ OBJECT_BUILDING obj_sandworm = {
 .A = {MAP_HEIGHT - (MAP_HEIGHT - 3), MAP_WIDTH - (MAP_WIDTH - 10)},
 .B = {MAP_HEIGHT - 7, (MAP_WIDTH + 36) - MAP_WIDTH}
 };
+
 //건물 선택
 BUILDING building = {
-	.barracks = 0,
-	.dormitory = 0,
-	.garage = 0,
-	.plate = 0,
-	.shelter = 0
+	.barracks = 0, // 병영
+	.dormitory = 0, // 숙소
+	.garage = 0, // 창고
+	.plate = 0, // 장판
+	.shelter = 0 // 은신처
 };
 
 /* ================= main() =================== */
@@ -238,7 +243,7 @@ int main(void) {
 				if (cursor.size == 1) space_prass(); // 커서의 크기가 1일때만 정보출력
 				else if (cursor.size == 2) { // 커서의 크기가 2일때만 건설조건 확인
 					if (is_cursor_all_on_P(cursor.current, &cursor, map)) { //모두 P위에 있어, 'True'를 반환받기
-						// 병영
+						// 병영 건설
 						if (building.barracks == 1 && resource.spice >= 4) { // B-B선택(병영건설)
 							POSITION curr = cursor.current;
 							int size = cursor.size;
@@ -248,13 +253,14 @@ int main(void) {
 									map[0][build_pos.row][build_pos.column] = 'b';  // 병영 출력
 								}
 							}
+							building.plate = 0;
 							cursor.size = 1;
 							resource.spice -= 4;
 							clear_messages();
 							normally_command();
 							system_message("성공적으로 병영이 건설되었습니다.");
 						}
-						// 은신처
+						// 은신처 건설
 						else if (building.shelter == 1 && resource.spice >= 5) {
 							POSITION curr = cursor.current;
 							int size = cursor.size;
@@ -264,13 +270,14 @@ int main(void) {
 									map[0][build_pos.row][build_pos.column] = 'S';  // 병영 출력
 								}
 							}
+							building.shelter = 0;
 							cursor.size = 1;
 							resource.spice -= 5;
 							clear_messages();
 							normally_command();
 							system_message("성공적으로 은신처가 건설되었습니다.");
 						}
-						// 숙소
+						// 숙소 건설
 						else if (building.dormitory == 1 && resource.spice >= 2) {
 							POSITION curr = cursor.current;
 							int size = cursor.size;
@@ -280,6 +287,7 @@ int main(void) {
 									map[0][build_pos.row][build_pos.column] = 'D';  // 병영 출력
 								}
 							}
+							building.dormitory = 0;
 							cursor.size = 1;
 							resource.spice -= 2;
 							resource.population_max += 10;
@@ -287,7 +295,7 @@ int main(void) {
 							normally_command();
 							system_message("성공적으로 숙소가 건설되었습니다.");
 						}
-						// 창고
+						// 창고 건설
 						else if (building.garage == 1 && resource.spice >= 4) {
 							POSITION curr = cursor.current;
 							int size = cursor.size;
@@ -297,6 +305,7 @@ int main(void) {
 									map[0][build_pos.row][build_pos.column] = 'G';  // 창고 출력
 								}
 							}
+							building.garage = 0;
 							cursor.size = 1;
 							resource.spice -= 4;
 							resource.spice_max += 10;
@@ -304,11 +313,14 @@ int main(void) {
 							normally_command();
 							system_message("성공적으로 창고가 건설되었습니다.");
 						}
-
+						// 장판 위에 장판을 지으려고 할때
+						else if (building.plate == 1) system_message("장판 위에 장판을 건설할 수 없습니다.");
+						// 자원이 조건을 충족하지 못했을 경우
 						else system_message("자원이 부족합니다.");
 					}
 					else if (is_cursor_all_on_sand(cursor.current, &cursor, map)) {
-						// 장판
+						// 장판 설치(건설)
+						int width = MAP_WIDTH / 2;
 						if (building.plate == 1 && resource.spice >= 1) { // 장판 P
 							POSITION curr = cursor.current;
 							int size = cursor.size;
@@ -324,32 +336,47 @@ int main(void) {
 							normally_command();
 							system_message("성공적으로 장판이 건설되었습니다.");
 						}
+						// 사막 위에 건물을 지으려고 할때
+						else if (building.plate != 1) system_message("건물은 장판 위에 건설해야합니다.");
+						else system_message("자원이 부족합니다.");
 					}
 					else system_message("위치가 올바르지 않습니다.");
 				}
 				break;
 			}
-			case k_esc:	ESC_prass(); break;
-			case k_h: create_harvester(&resource); break;
-			case k_H: create_harvester(&resource); break;
+			case k_h: {
+				if (harvester.on_click_space == 1) {
+					create_harvester(&resource);
+					harvester.on_click_space = 0;
+				}
+				break;
+			}
+			case k_H: {
+				if (harvester.on_click_space == 1) {
+					create_harvester(&resource);
+					harvester.on_click_space = 0;
+				}
+				break;
+			}
 			case k_b: B_prass(&resource, &cursor); break;
 			case k_B: B_prass(&resource, &cursor); break;
+			case k_esc:	ESC_prass(); break;
 			case k_none:
 			case k_undef:
 			default: break;
 			}
-		}
 
-		// 샘플 오브젝트 동작
-		sample_obj_move();
-		// 샌드웜 오브젝트 움직임
-		sandworm_obj_move(sandworm_make_spice1);
-		sandworm1_obj_move(sandworm_make_spice2);
-		
-		// 화면 출력
-		display(resource, map, system_map, status_map, consol_map, cursor);
-		Sleep(TICK);
-		sys_clock += 10;
+			// 샘플 오브젝트 동작
+			sample_obj_move();
+			// 샌드웜 오브젝트 움직임
+			sandworm_obj_move(sandworm_make_spice1);
+			sandworm1_obj_move(sandworm_make_spice2);
+
+			// 화면 출력
+			display(resource, map, system_map, status_map, consol_map, cursor);
+			Sleep(TICK);
+			sys_clock += 10;
+		}
 	}
 }
 
@@ -368,7 +395,7 @@ void outro(void) {
 	exit(0);
 }
 
-// #모양 지형생성
+// # 모양 맵생성 & 독수리
 void init(void) {
 	// layer 0(map[0])에 지형 생성
 	// 게임 화면
@@ -429,7 +456,7 @@ void init(void) {
 		}
 	}
 	// object sample
-	map[1][obj.pos.row][obj.pos.column] = 'o';
+	map[1][obj.pos.row][obj.pos.column] = 'E';
 }
 
 
@@ -806,12 +833,14 @@ void space_prass(void) {
 		ally_base_info();
 		command_ally_base();
 		system_message("베이스를 선택했습니다.");
+		harvester.on_click_space = 1;
 	}
 	else if (current_char == 'H') {
 		clear_messages();
 		ally_harvester_info();
 		command_ally_harvester();
 		system_message("하베스터를 선택했습니다.");
+		harvester.on_click_H = 1;
 	}
 	else if (current_char == 'R') {
 		clear_messages();
@@ -833,12 +862,22 @@ void space_prass(void) {
 	/*else if (current_char == ' ') {
 		clear_messages();
 		desert_info();
-	}
-	*/
+	}*/
+	
 }
 // ESC를 눌렀을때
 void ESC_prass(void) {
-	cursor.size = 1;
+	cursor.size = 1;	// 커서 1x1사이즈로 초기화
+	// 건물 선택 관련 구조체값 0으로 되돌리기
+	building.barracks = 0;
+	building.dormitory = 0;
+	building.garage = 0;
+	building.plate = 0;
+	building.shelter = 0;
+	// 하베스터 선택 초기화
+	harvester.on_click_space = 0;
+	harvester.on_click_H = 0;
+
 	display_map();
 	system_message("선택을 취소합니다.");
 	POSITION pos;
@@ -872,7 +911,7 @@ void B_prass(RESOURCE* resource, CURSOR* cursor) {
 		if (k == 'p' || k == 'P') {
 			cursor->size = 2; //커서 크기를 2X2로 변경
 			building.plate = 1;
-			system_message("건물을 건설할 위치로 이동 후 스페이스바 입력");
+			system_message("건물을 건설할 위치로 이동 후 스페이스바 입력 (취소: ESC)");
 	}
 		// 병영 건설
 		else if (k == 'b' || k == 'B') { 
@@ -1112,15 +1151,14 @@ void system_message(const char* mes) {
 void create_harvester(RESOURCE *resource) {
 	POSITION pos;
 	char current_char = check_cursor_position();
-
-	if (current_char == 'B') {
+	if (harvester.on_click_space == 1 && current_char == 'B') {
 		if (resource->spice >= 5 && resource->population + 5 <= resource->population_max) {
 			pos.row = MAP_HEIGHT - 4;
 			pos.column = MAP_WIDTH - (MAP_WIDTH - 2);
-			map[1][pos.row][pos.column] = 'H';
+			map[1][pos.row][pos.column] = 'H'; // 하베스터 생성
 			resource->spice -= 5;
 			resource->population += 5;
-			system_message("본진에서 성공적으로 하베스터를 생성했습니다.");
+			system_message("하베스터가 성공적으로 생성되었습니다.");
 		}
 		else {
 			system_message("자원 또는 인구수가 부족합니다.");
