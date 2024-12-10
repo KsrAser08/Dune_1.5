@@ -52,7 +52,9 @@ typedef enum {
 	k_space, //스페이스바 입력
 	k_H, k_h, // H입력
 	k_esc, // ESC입력
-	k_b, k_B // B입력
+	k_b, k_B, // B입력
+	k_s, k_S, // s입력
+	k_f, k_F // k입력
 } KEY;
 
 
@@ -149,6 +151,8 @@ typedef struct {
 typedef struct {
 	int on_click_H;
 	int on_click_space;
+	int on_click_b;
+	int on_click_S;
 }CLICK;
 
 typedef struct {

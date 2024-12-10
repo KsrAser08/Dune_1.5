@@ -34,12 +34,19 @@ void stone_rock_info(void); // 돌, 바위 현재 정보
 void sandworm_info(void); // 샌드웜 현재 정보
 void plate_info(void); // 장판 현재 정보
 void spice_info(void); // 스파이스 현재 정보
-void desert_info(void); // 사막 정보 표시
+void barracks_info(void); // 사막 정보 표시
 
 /*추가선언*/
 void harvester_harvest(void);
 POSITION move_harvester(void);
 POSITION find_nearest_spice(POSITION pos);
+void create_solder(RESOURCE* resource, POSITION barr_pos);
+void shelter_info(void);
+void create_fremen(RESOURCE* resource, POSITION shel_pos);
+void soldier_info(void);
+void fremen_info(void);
+void garage_info(void);
+void dormitory_info(void);
 
 
 /*========== 명령창 ==========*/
@@ -104,7 +111,18 @@ SANDWORM sandworm = {
 // 키보드 클릭에 관한 구조체 설정
 CLICK click = {
 	.on_click_space = 0,
-	.on_click_H = 0
+	.on_click_H = 0,
+	.on_click_b = 0
+};
+
+POSITION barr_pos = {
+	.row = 0,
+	.column = 0
+};
+
+POSITION shel_pos = {
+	.row = 0,
+	.column = 0
 };
 
 //하베스터의 선택과 행동에 관한 구조체 기본
@@ -269,6 +287,8 @@ int main(void) {
 							for (int i = 0; i < size; i++) {
 								for (int j = 0; j < size; j++) {
 									POSITION build_pos = { curr.row + i, curr.column + j };
+									barr_pos.row = build_pos.row;
+									barr_pos.column = build_pos.column;
 									map[0][build_pos.row][build_pos.column] = 'b';  // 병영 출력
 								}
 							}
@@ -286,6 +306,8 @@ int main(void) {
 							for (int i = 0; i < size; i++) {
 								for (int j = 0; j < size; j++) {
 									POSITION build_pos = { curr.row + i, curr.column + j };
+									shel_pos.row = build_pos.row;
+									shel_pos.column = build_pos.column;
 									map[0][build_pos.row][build_pos.column] = 'S';  // 병영 출력
 								}
 							}
@@ -379,6 +401,32 @@ int main(void) {
 			}
 			case k_b: B_prass(&resource, &cursor); break;
 			case k_B: B_prass(&resource, &cursor); break;
+			case k_s: { 
+				if (click.on_click_b == 1) { 
+					create_solder(&resource, barr_pos); 
+					click.on_click_b = 0;
+				}
+				break; 
+			}
+			case k_S: {
+				if (click.on_click_b == 1) {
+					create_solder(&resource, barr_pos);
+					click.on_click_b = 0;
+				}
+				break;
+			}
+			case k_f: {
+				if (click.on_click_S == 1) {
+					create_fremen(&resource, shel_pos);
+					click.on_click_S = 0;
+				}
+			}
+			case k_F: {
+				if (click.on_click_S == 1) {
+					create_fremen(&resource, shel_pos);
+					click.on_click_S = 0;
+				}
+			}
 			case k_esc:	ESC_prass(); break;
 			case k_none:
 			case k_undef:
@@ -561,8 +609,8 @@ POSITION near_unit(POSITION pos) {
 
 	for (int i = 0; i < MAP_HEIGHT; i++) {
 		for (int j = 0; j < MAP_WIDTH; j++) {
-			// 레이어 1에서 유닛('H') 찾기
-			if (map[1][i][j] == 'H') {
+			// 레이어 1에서 유닛 찾기
+			if (map[1][i][j] == 'H' || map[1][i][j] == 'S' || map[1][i][j] == 'F' || map[1][i][j] == 'f' || map[1][i][j] == 'T') {
 				POSITION unit_pos = { i, j };
 
 				// psub를 사용하여 두 위치의 차이를 계산
@@ -654,7 +702,6 @@ POSITION move_harvester(void) {
 				return harvester.pos;  // 현재 위치 유지
 			}
 		}
-
 		harvester.adjacent_to_spice = 0;
 
 		harvester.dest = nearest_spice;
@@ -986,20 +1033,45 @@ void space_prass(void) {
 		clear_messages();
 		sandworm_info();
 	}
-	else if (current_char == '3' || current_char == '4' || current_char == '5' ||
-		current_char == '6' || current_char == '7') {
+	else if (current_char == '3' || current_char == '4' || current_char == '5' || current_char == '6' || current_char == '7') {
 		clear_messages();
 		spice_info();
 	}
 	else if (current_char == 'P') {
 		clear_messages();
 		plate_info();
+		system_message("장판을 선택했습니다.");
 	}
-	/*else if (current_char == ' ') {
+	else if (current_char == 'b') {
 		clear_messages();
-		desert_info();
-	}*/
-	
+		barracks_info();
+		system_message("병영을 선택했습니다.");
+		click.on_click_b = 1;
+	}
+	else if (current_char == 'S') {
+		clear_messages();
+		shelter_info();
+		system_message("은신처를 선택했습니다.");
+		click.on_click_S = 1;
+	}
+	else if (current_char == 's') {
+		clear_messages();
+		soldier_info();
+		system_message("보병을 선택했습니다.");
+	}
+	else if (current_char == 'F') {
+		clear_messages();
+		fremen_info();
+		system_message("프레멘을 선택했습니다.");
+	}
+	else if (current_char == 'D') {
+		clear_messages();
+		dormitory_info();
+	}
+	else if (current_char == 'G') {
+		clear_messages();
+		garage_info();
+	}
 }
 // ESC를 눌렀을때
 void ESC_prass(void) {
@@ -1010,12 +1082,13 @@ void ESC_prass(void) {
 	building.garage = 0;
 	building.plate = 0;
 	building.shelter = 0;
-	// 하베스터 선택 초기화
+	// 건물 & 유닛 선택 초기화
 	click.on_click_space = 0;
 	click.on_click_H = 0;
+	click.on_click_b = 0;
+	click.on_click_S = 0;
 	/*===============================================*/
 	display_map();
-	system_message("선택을 취소합니다.");
 	POSITION pos;
 	for (int i = 2; i < STATUS_HEIGHT - 1; i++) {
 		for (int j = 4; j < STATUS_WIDTH - 2; j++) {
@@ -1157,7 +1230,7 @@ void spice_info(void) {
 	gotoxy(pos);
 	printf("오브젝트 정보: 건물(자원)");
 }
-void desert_info(void) {
+void barracks_info(void) {
 	POSITION pos;
 	pos.row = 2;
 	pos.column = MAP_WIDTH + 4;
@@ -1165,13 +1238,112 @@ void desert_info(void) {
 	printf("- 정보 -");
 	pos.row += 1;
 	gotoxy(pos);
-	printf("오브젝트 이름: 사막");
+	printf("오브젝트 이름: 병영");
 	pos.row += 1;
 	gotoxy(pos);
-	printf("이 위치엔 건물을 지을수 없다.");
+	printf("이곳에서 보병을 생산할 수 있다.");
+
+	pos.row = MAP_HEIGHT + 2;
+	pos.column = MAP_WIDTH + 4;
+	pos.row += 1;
+	gotoxy(pos);
+	printf("명령어:");
+	pos.row += 1;
+	gotoxy(pos);
+	printf("\n");
+	pos.row += 1;
+	gotoxy(pos);
+	printf("S: 보병 생산");
 }
+void shelter_info(void) {
+	POSITION pos;
+	pos.row = 2;
+	pos.column = MAP_WIDTH + 4;
+	gotoxy(pos);
+	printf("- 정보 -");
+	pos.row += 1;
+	gotoxy(pos);
+	printf("오브젝트 이름: 은신처");
+	pos.row += 1;
+	gotoxy(pos);
+	printf("이곳에서 특수유닛 프레멘을 생산할 수 있다.");
+	
+	pos.row = MAP_HEIGHT + 2;
+	pos.column = MAP_WIDTH + 4;
+	pos.row += 1;
+	gotoxy(pos);
+	printf("명령어:");
+	pos.row += 1;
+	gotoxy(pos);
+	printf("\n");
+	pos.row += 1;
+	gotoxy(pos);
+	printf("F: 프레멘 생산");
+}
+void soldier_info(void) {
+	POSITION pos;
+	pos.row = 2;
+	pos.column = MAP_WIDTH + 4;
+	gotoxy(pos);
+	printf("- 정보 -");
+	pos.row += 1;
+	gotoxy(pos);
+	printf("유닛 이름: 보병");
 
+	pos.row = MAP_HEIGHT + 2;
+	pos.column = MAP_WIDTH + 4;
+	pos.row += 1;
+	gotoxy(pos);
+	printf("명령어:");
+	pos.row += 1;
+	gotoxy(pos);
+	printf("\n");
+	pos.row += 1;
+	gotoxy(pos);
+	printf("M: 이동		 P: 순찰 ");
+}
+void fremen_info(void) {
+	POSITION pos;
+	pos.row = 2;
+	pos.column = MAP_WIDTH + 4;
+	gotoxy(pos);
+	printf("- 정보 -");
+	pos.row += 1;
+	gotoxy(pos);
+	printf("유닛 이름: 프레멘");
 
+	pos.row = MAP_HEIGHT + 2;
+	pos.column = MAP_WIDTH + 4;
+	pos.row += 1;
+	gotoxy(pos);
+	printf("명령어:");
+	pos.row += 1;
+	gotoxy(pos);
+	printf("\n");
+	pos.row += 1;
+	gotoxy(pos);
+	printf("M: 이동		 P: 순찰 ");
+}
+void garage_info(void) {
+	POSITION pos;
+	pos.row = 2;
+	pos.column = MAP_WIDTH + 4;
+	gotoxy(pos);
+	printf("- 정보 -");
+	pos.row += 1;
+	gotoxy(pos);
+	printf("건물 이름: 창고");
+}
+void dormitory_info(void) {
+	POSITION pos;
+	pos.row = 2;
+	pos.column = MAP_WIDTH + 4;
+	gotoxy(pos);
+	printf("- 정보 -");
+	pos.row += 1;
+	gotoxy(pos);
+	printf("건물 이름: 숙소");
+}
 /*======== 명령어 출력 ========*/
 void normally_command(void) {
 	POSITION pos;
@@ -1299,6 +1471,50 @@ void create_harvester(RESOURCE *resource) {
 				system_message("하베스터가 성공적으로 생성되었습니다.");
 			}
 			else system_message("하베스터가 이미 생성되어 있습니다.");
+		}
+		else {
+			system_message("자원 또는 인구수가 부족합니다.");
+		}
+	}
+}
+// 보병 생산
+void create_solder(RESOURCE* resource, POSITION barr_pos) {
+	POSITION pos;
+	char current_char = check_cursor_position();
+	if (click.on_click_b == 1 && current_char == 'b') {
+		if (resource->spice >= 1 && resource->population + 1 <= resource->population_max) {
+			pos.row = barr_pos.row;
+			pos.column = barr_pos.column;
+			if (map[1][pos.row - 2][pos.column] != 's') {
+				map[1][pos.row - 2][pos.column] = 's'; // 보병 생성
+				resource->spice -= 1;
+				resource->population += 1;
+				clear_messages();
+				system_message("보병이 성공적으로 생성되었습니다.");
+			}
+			else system_message("보병이 이미 생성되어 있습니다.");
+		}
+		else {
+			system_message("자원 또는 인구수가 부족합니다.");
+		}
+	}
+}
+// 프레멘 생산
+void create_fremen(RESOURCE* resource, POSITION shel_pos) {
+	POSITION pos;
+	char current_char = check_cursor_position();
+	if (click.on_click_S == 1 && current_char == 'S') {
+		if (resource->spice >= 5 && resource->population + 1 <= resource->population_max) {
+			pos.row = shel_pos.row;
+			pos.column = shel_pos.column;
+			if (map[1][pos.row - 2][pos.column] != 'F') {
+				map[1][pos.row - 2][pos.column] = 'F'; // 프레멘 생성
+				resource->spice -= 5;
+				resource->population += 1;
+				clear_messages();
+				system_message("프레멘이 성공적으로 생성되었습니다.");
+			}
+			else system_message("프레멘이 이미 생성되어 있습니다.");
 		}
 		else {
 			system_message("자원 또는 인구수가 부족합니다.");
