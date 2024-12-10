@@ -610,7 +610,7 @@ POSITION near_unit(POSITION pos) {
 	for (int i = 0; i < MAP_HEIGHT; i++) {
 		for (int j = 0; j < MAP_WIDTH; j++) {
 			// 레이어 1에서 유닛 찾기
-			if (map[1][i][j] == 'H' || map[1][i][j] == 'S' || map[1][i][j] == 'F' || map[1][i][j] == 'f' || map[1][i][j] == 'T') {
+			if (map[1][i][j] == 'H' || map[1][i][j] == 's' || map[1][i][j] == 'F' || map[1][i][j] == 'f' || map[1][i][j] == 'T') {
 				POSITION unit_pos = { i, j };
 
 				// psub를 사용하여 두 위치의 차이를 계산
