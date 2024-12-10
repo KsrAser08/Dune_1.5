@@ -5,7 +5,7 @@
 #include "io.h"
 #include "display.h"
 
-// 함수 정렬
+/*================= 함수 정렬 =================*/
 void init(void);
 void game_map(void);
 void intro(void);
@@ -18,15 +18,14 @@ void sample_obj_move(void);
 void sandworm_obj_move(int sandworm_make_spice1);
 void sandworm1_obj_move(int sandworm_make_spice2);
 
-POSITION near_unit(POSITION pos);
-POSITION sample_obj_next_position(void);
-POSITION sandworm_obj_next_position(void);
-POSITION sandworm1_obj_next_position(void);
+POSITION near_unit(POSITION pos); // 가장 가까운 유닛 구하기
+POSITION sample_obj_next_position(void); // E 움직임
+POSITION sandworm_obj_next_position(void); // 샌드웜 움직임
+POSITION sandworm1_obj_next_position(void); // 샌드웜 움직임
 
-void space_prass(void);
-void ESC_prass(void);
-void B_prass(RESOURCE* resource, CURSOR* cursor);
-
+void space_prass(void); // 스페이스바를 눌렀을때
+void ESC_prass(void); // ESC를 눌렀을때
+void B_prass(RESOURCE* resource, CURSOR* cursor); // B를 눌렀을때
 
 char check_cursor_position(void); // 현재 커서에 있는 문자를 인식
 void ally_base_info(void); // 아군 베이스 현재 정보
@@ -37,17 +36,24 @@ void plate_info(void); // 장판 현재 정보
 void spice_info(void); // 스파이스 현재 정보
 void desert_info(void); // 사막 정보 표시
 
-/*==========명령창==========*/
+/*추가선언*/
+void harvester_harvest(void);
+POSITION move_harvester(void);
+POSITION find_nearest_spice(POSITION pos);
+
+
+/*========== 명령창 ==========*/
 void normally_command(void);
 void command_ally_base(void);
 void command_ally_harvester(void);
 void command_can_build(void);
-/*=========생산 & 건설=========*/
+/*========= 생산 & 건설 =========*/
 void create_harvester(RESOURCE *resource);
 bool is_cursor_all_on_P(POSITION current_pos, CURSOR* cursor, char map[N_LAYER][MAP_HEIGHT][MAP_WIDTH]);
 bool is_cursor_all_on_sand(POSITION current_pos, CURSOR* cursor, char map[N_LAYER][MAP_HEIGHT][MAP_WIDTH]);
-/*=========시스템 메세지 출력=========*/
+/*========= 시스템 메세지 출력 =========*/
 void system_message(const char* mes);
+
 
 /* ================= control =================== */
 int sys_clock = 0;		// system-wide clock(ms)
@@ -63,11 +69,13 @@ char consol_map[CONSOL_HEIGHT][CONSOL_WIDTH] = { 0 };
 
 //자원 정보
 RESOURCE resource = {  
-.spice = 5,
-.spice_max = 30,
-.population = 0,
-.population_max = 10
+.spice = 10,
+.spice_max = 20,
+.population = 5,
+.population_max = 20
 }; 
+
+/*=============== 유닛 동작 ===============*/
 
 OBJECT_SAMPLE obj = {
 .pos = {1, 1},
@@ -81,20 +89,31 @@ SANDWORM sandworm1 = {
 .pos = {MAP_HEIGHT - (MAP_HEIGHT - 3), MAP_WIDTH - (MAP_WIDTH - 10)},
 .dest = {MAP_HEIGHT - 2, MAP_WIDTH - 2},
 .sandworm_repr = 'W',
-.move_period = 1400,
-.next_move_time = 1400
+.move_period = 1320,
+.next_move_time = 1320
 };
 
 SANDWORM sandworm = {
 .pos = {MAP_HEIGHT - 7, (MAP_WIDTH + 36) - MAP_WIDTH},
 .dest = {MAP_HEIGHT - 2, MAP_WIDTH - 2},
 .sandworm_repr = 'W',
-.move_period = 1400,
-.next_move_time = 1400
+.move_period = 1320,
+.next_move_time = 1320
 };
 
+// 키보드 클릭에 관한 구조체 설정
+CLICK click = {
+	.on_click_space = 0,
+	.on_click_H = 0
+};
+
+//하베스터의 선택과 행동에 관한 구조체 기본
 HARVESTER harvester = {
-	.on_click_space = 0
+	.harvester_harvest = 0, //하베스터 수확명령이 떨어졌는가
+
+	.harvester_repr = 'H',
+	.move_period = 700,
+	.next_move_time = 700
 };
 
 //아군 베이스 설정 'B'
@@ -345,16 +364,16 @@ int main(void) {
 				break;
 			}
 			case k_h: {
-				if (harvester.on_click_space == 1) {
+				if (click.on_click_space == 1) {
 					create_harvester(&resource);
-					harvester.on_click_space = 0;
+					click.on_click_space = 0;
 				}
 				break;
 			}
 			case k_H: {
-				if (harvester.on_click_space == 1) {
+				if (click.on_click_space == 1) {
 					create_harvester(&resource);
-					harvester.on_click_space = 0;
+					click.on_click_space = 0;
 				}
 				break;
 			}
@@ -371,7 +390,11 @@ int main(void) {
 			// 샌드웜 오브젝트 움직임
 			sandworm_obj_move(sandworm_make_spice1);
 			sandworm1_obj_move(sandworm_make_spice2);
-
+			// 수정 요함
+			/*if (harvester.harvester_harvest == 1) {
+				harvester_harvest();
+			}*/
+		
 			// 화면 출력
 			display(resource, map, system_map, status_map, consol_map, cursor);
 			Sleep(TICK);
@@ -531,7 +554,7 @@ void cursor_move(DIRECTION dir) {
 
 /* ================= sample object movement =================== */
 
-//가장 가까운 유닛 구하는 함수
+//(샌드웜) 가장 가까운 유닛 구하는 함수
 POSITION near_unit(POSITION pos) {
 	int min_distance = MAP_WIDTH * MAP_HEIGHT;
 	POSITION nearest_unit = { -1, -1 }; 
@@ -556,6 +579,115 @@ POSITION near_unit(POSITION pos) {
 	}
 	return nearest_unit;
 }
+
+/*추가 수정*/
+//(하베스터) 가장 가까운 스파이스 찾는 함수
+
+POSITION find_nearest_spice(POSITION pos) {
+	int min_distance = MAP_WIDTH * MAP_HEIGHT;
+	POSITION nearest_spice = { -1, -1 };
+
+	for (int i = 0; i < MAP_HEIGHT; i++) {
+		for (int j = 0; j < MAP_WIDTH; j++) {
+			// 레이어 1에서 유닛('H') 찾기
+			if (map[0][i][j] == '1' || map[0][i][j] == '2' || map[0][i][j] == '3' || map[0][i][j] == '4' || map[0][i][j] == '5' || map[0][i][j] == '6' || map[0][i][j] == '7') {
+				POSITION spice_pos = { i, j };
+
+				// psub를 사용하여 두 위치의 차이를 계산
+				POSITION diff = psub(pos, spice_pos); // pos와 유닛 위치의 벡터 차이 계산
+				int distance = abs(diff.row) + abs(diff.column); // 맨해튼 거리 계산
+
+				// 더 가까운 유닛이 발견되면 업데이트
+				if (distance < min_distance) {
+					min_distance = distance;
+					nearest_spice = spice_pos;
+				}
+			}
+		}
+	}
+	return nearest_spice;
+}
+//하베스터 수확
+void harvester_harvest(void) {
+	POSITION prev = harvester.pos;  // 현재 위치 저장
+
+	if (sys_clock <= harvester.next_move_time) {
+		// 아직 시간이 안 됨
+		return;
+	}
+
+	// 현재 위치를 비움
+	map[1][harvester.pos.row][harvester.pos.column] = -1;
+
+	// 다음 위치 계산
+	harvester.pos = move_harvester();
+
+	// 다음 위치로 이동
+	map[1][harvester.pos.row][harvester.pos.column] = harvester.harvester_repr;
+
+	
+
+	harvester.next_move_time = sys_clock + harvester.move_period;
+}
+//하베스터 움직임 정하기
+POSITION move_harvester(void) {
+	POSITION nearest_spice = find_nearest_spice(harvester.pos);  // 가장 가까운 유닛 찾기
+
+	if (nearest_spice.row == -1 && nearest_spice.column == -1) {
+		sandworm1.adjacent_to_unit = 0;  // 인접 상태 초기화
+		return harvester.pos;
+	}
+
+	if (abs(harvester.pos.row - nearest_spice.row) + abs(harvester.pos.column - nearest_spice.column) == 1) {
+		if (harvester.adjacent_to_spice == 1) {
+			if (nearest_spice.row >= 0 && nearest_spice.row < MAP_HEIGHT &&
+				nearest_spice.column >= 0 && nearest_spice.column < MAP_WIDTH) {
+				int random = rand() % 3 + 2;
+				if (map[0][nearest_spice.row][nearest_spice.column] >= '1' && map[0][nearest_spice.row][nearest_spice.column] <= '7') {
+					map[0][nearest_spice.row][nearest_spice.column] -= random;
+					harvester.adjacent_to_spice = 0;  // 인접 상태 초기화
+					return harvester.pos;
+				}
+			}
+			else {
+				harvester.adjacent_to_spice = 1;
+				return harvester.pos;  // 현재 위치 유지
+			}
+		}
+
+		harvester.adjacent_to_spice = 0;
+
+		harvester.dest = nearest_spice;
+
+		POSITION diff = psub(harvester.dest, harvester.pos);
+
+		DIRECTION dirs[2];
+		if (abs(diff.row) >= abs(diff.column)) {
+			dirs[0] = (diff.row > 0) ? d_down : d_up;
+			dirs[1] = (diff.column > 0) ? d_right : d_left;
+		}
+		else {
+			dirs[0] = (diff.column > 0) ? d_right : d_left;
+			dirs[1] = (diff.row > 0) ? d_down : d_up;
+		}
+
+		for (int i = 0; i < 2; i++) {
+			POSITION next_pos = pmove(harvester.pos, dirs[i]);
+
+			if (1 <= next_pos.row && next_pos.row <= MAP_HEIGHT - 2 &&
+				1 <= next_pos.column && next_pos.column <= MAP_WIDTH - 2 &&
+				map[1][next_pos.row][next_pos.column] < 0) {
+				if (map[1][next_pos.row][next_pos.column] != 'R' &&
+					map[1][next_pos.row][next_pos.column] != 'P') {
+					return next_pos;
+				}
+			}
+		}
+
+		return harvester.pos;  // 유효한 이동 경로가 없으면 제자리 유지
+	}
+}
+
 
 // 'o'유닛 이동 (나중에 레이어2(공중)에 독수리(?)로 만들예정)
 POSITION sample_obj_next_position(void) {
@@ -601,8 +733,10 @@ POSITION sample_obj_next_position(void) {
 	}
 }
 
+/*============ 유닛 이동 관련 ============*/
 // 우측 하단 샌드웜 이동
 POSITION sandworm_obj_next_position(void) {
+	int witch = MAP_HEIGHT / 2;
 	POSITION nearest_unit = near_unit(sandworm.pos);  // 가장 가까운 유닛 찾기
 
 	if (nearest_unit.row == -1 && nearest_unit.column == -1) {
@@ -618,6 +752,7 @@ POSITION sandworm_obj_next_position(void) {
 				sandworm.pos = nearest_unit;  // 샌드웜의 위치를 유닛 위치로 변경
 				sandworm.adjacent_to_unit = 0;  // 인접 상태 초기화
 				system_message("샌드웜이 유닛을 먹었습니다!");  // 시스템 메시지
+				if (nearest_unit.row > witch) resource.population -= 5;
 				return sandworm.pos;
 			}
 		}
@@ -661,6 +796,7 @@ POSITION sandworm_obj_next_position(void) {
 
 // 좌측 상단 샌드웜 이동
 POSITION sandworm1_obj_next_position(void) {
+	int witch = MAP_HEIGHT / 2;
 	POSITION nearest_unit = near_unit(sandworm1.pos);  // 가장 가까운 유닛 찾기
 
 	if (nearest_unit.row == -1 && nearest_unit.column == -1) {
@@ -676,6 +812,7 @@ POSITION sandworm1_obj_next_position(void) {
 				sandworm1.pos = nearest_unit;  // 샌드웜1의 위치를 유닛 위치로 변경
 				sandworm1.adjacent_to_unit = 0;  // 인접 상태 초기화
 				system_message("샌드웜이 유닛을 먹었습니다!");  // 시스템 메시지
+				if (nearest_unit.row > witch) resource.population -= 5;
 				return sandworm1.pos;
 			}
 		}
@@ -791,7 +928,6 @@ void sandworm1_obj_move(int sandworm_make_spice2) {
 	sandworm1.next_move_time = sys_clock + sandworm1.move_period;
 }
 
-
 /*================= 문자 청소 =================*/
 void clear_messages(void) {
 	POSITION pos;
@@ -833,14 +969,14 @@ void space_prass(void) {
 		ally_base_info();
 		command_ally_base();
 		system_message("베이스를 선택했습니다.");
-		harvester.on_click_space = 1;
+		click.on_click_space = 1;
 	}
 	else if (current_char == 'H') {
 		clear_messages();
 		ally_harvester_info();
 		command_ally_harvester();
 		system_message("하베스터를 선택했습니다.");
-		harvester.on_click_H = 1;
+		click.on_click_H = 1;
 	}
 	else if (current_char == 'R') {
 		clear_messages();
@@ -867,17 +1003,17 @@ void space_prass(void) {
 }
 // ESC를 눌렀을때
 void ESC_prass(void) {
+	/*================ 구조체 값 정리 ================*/
 	cursor.size = 1;	// 커서 1x1사이즈로 초기화
-	// 건물 선택 관련 구조체값 0으로 되돌리기
-	building.barracks = 0;
+	building.barracks = 0; // 건물 선택 관련 구조체값 0으로 되돌리기
 	building.dormitory = 0;
 	building.garage = 0;
 	building.plate = 0;
 	building.shelter = 0;
 	// 하베스터 선택 초기화
-	harvester.on_click_space = 0;
-	harvester.on_click_H = 0;
-
+	click.on_click_space = 0;
+	click.on_click_H = 0;
+	/*===============================================*/
 	display_map();
 	system_message("선택을 취소합니다.");
 	POSITION pos;
@@ -941,7 +1077,7 @@ void B_prass(RESOURCE* resource, CURSOR* cursor) {
 	}
 }
 
-/*==========유닛, 오브젝트, 건물 정보 출력===========*/
+/*========== 유닛, 오브젝트, 건물 정보 출력 ===========*/
 void ally_base_info(void){
 	POSITION pos;
 	pos.row = 2;
@@ -1036,7 +1172,7 @@ void desert_info(void) {
 }
 
 
-/*========명령어 출력========*/
+/*======== 명령어 출력 ========*/
 void normally_command(void) {
 	POSITION pos;
 	pos.row = MAP_HEIGHT + 2;
@@ -1077,7 +1213,7 @@ void command_ally_harvester(void) {
 	printf("\n");
 	pos.row += 1;
 	gotoxy(pos);
-	printf("H: Harvest, M: Move");
+	printf("H: 스파이스 수확하기, M: 하베스터 움직이기");
 }
 void command_can_build(void){
 	POSITION pos;
@@ -1101,11 +1237,11 @@ void command_can_build(void){
 	
 }
 
-/*=========상태창 정보 출력==========*/
+/*========= 상태창 정보 출력 ==========*/
 const char* many_massage[ALL_MESSAGE];
 const char* backbuf_massage = NULL;
 
-/*=======상태메세지 출력========*/
+/*======= 상태메세지 출력 ========*/
 void system_message(const char* mes) {
 	POSITION pos;
 	
@@ -1146,19 +1282,23 @@ void system_message(const char* mes) {
 
 }
 
-/*===========생산 & 건설===========*/
+/*=========== 생산 & 건설 ===========*/
 // 하베스터 생산
 void create_harvester(RESOURCE *resource) {
 	POSITION pos;
 	char current_char = check_cursor_position();
-	if (harvester.on_click_space == 1 && current_char == 'B') {
+	if (click.on_click_space == 1 && current_char == 'B') {
 		if (resource->spice >= 5 && resource->population + 5 <= resource->population_max) {
 			pos.row = MAP_HEIGHT - 4;
 			pos.column = MAP_WIDTH - (MAP_WIDTH - 2);
-			map[1][pos.row][pos.column] = 'H'; // 하베스터 생성
-			resource->spice -= 5;
-			resource->population += 5;
-			system_message("하베스터가 성공적으로 생성되었습니다.");
+			if (map[1][pos.row][pos.column] != 'H') {
+				map[1][pos.row][pos.column] = 'H'; // 하베스터 생성
+				resource->spice -= 5;
+				resource->population += 5;
+				clear_messages();
+				system_message("하베스터가 성공적으로 생성되었습니다.");
+			}
+			else system_message("하베스터가 이미 생성되어 있습니다.");
 		}
 		else {
 			system_message("자원 또는 인구수가 부족합니다.");
@@ -1191,5 +1331,3 @@ bool is_cursor_all_on_sand(POSITION current_pos, CURSOR * cursor, char map[N_LAY
 	}
 	return true;  // 커서의 4면 모두 'P' 위에 있으면 성공
 }
-
-

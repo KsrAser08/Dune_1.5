@@ -139,14 +139,17 @@ typedef struct {
 typedef struct {
 	POSITION pos;		// 현재 위치(position)
 	POSITION dest;		// 목적지(destination)
-	char sandworm_repr;	// 화면에 표시할 문자(representation)
-	int adjacent_to_unit; // 유닛과 인접한 상태인지 여부 (0: 아님, 1: 맞음)
-	int move_period;	// '몇 ms마다 한 칸 움직이는지'를 뜻함
-	int next_move_time;	// 다음에 움직일 시간
-
-	int on_click_space; // 스페이스바를 눌러 생산 직전 화면에 진입했는가?
-	int on_click_H; // H를 눌러 하베스터를 선택했는가에 대한 여부 판단 
+	int adjacent_to_spice; // 스파이스과 인접한 상태인지 여부 (0: 아님, 1: 맞음)
+	int harvester_harvest;  // 자원 채굴 상태 추적 (0: 대기, 1: 수확 중)
+	char harvester_repr;
+	int move_period;  // 이동 주기 (단위: 시간)
+	int next_move_time;  // 하베스터가 다음으로 이동할 시간
 }HARVESTER;
+
+typedef struct {
+	int on_click_H;
+	int on_click_space;
+}CLICK;
 
 typedef struct {
 	int plate;
@@ -155,7 +158,4 @@ typedef struct {
 	int barracks;
 	int shelter;
 }BUILDING;
-
-
-
 #endif
